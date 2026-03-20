@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HL7 Message Decoder — HINF 5102</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:     #f4f3f0;
+  --bg-card:     #ffffff;
+  --bg-surface:  #f0efe9;
+  --bg-dim:      #e8e7e1;
+  --bg-code:     #1a1e2e;
+  --text-1:      #1a1918;
+  --text-2:      #5a5955;
+  --text-3:      #9a9990;
+  --border:      rgba(0,0,0,0.10);
+  --border-md:   rgba(0,0,0,0.18);
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --teal:        #1D9E75;
+  --teal-light:  #E1F5EE;
+  --teal-dark:   #085041;
+  --teal-mid:    #5DCAA5;
+  --amber:       #BA7517;
+  --amber-light: #FAEEDA;
+  --red:         #A32D2D;
+  --red-light:   #FCEBEB;
+  --blue:        #185FA5;
+  --blue-light:  #E6F1FB;
+  --font:        system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:        'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:     #181816;
+    --bg-card:     #222220;
+    --bg-surface:  #2a2a28;
+    --bg-dim:      #323230;
+    --bg-code:     #0d1117;
+    --text-1:      #f0efeb;
+    --text-2:      #a0a098;
+    --text-3:      #666660;
+    --border:      rgba(255,255,255,0.08);
+    --border-md:   rgba(255,255,255,0.15);
+    --teal-light:  #0a3d2b;
+    --amber-light: #3d2a08;
+    --red-light:   #3d1010;
+    --blue-light:  #0c2340;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+
+#app { max-width: 760px; margin: 0 auto; }
+
+/* ── Header ── */
+.eyebrow {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 6px;
+}
+h1 {
+  font-size: 20px; font-weight: 600; color: var(--text-1);
+  margin-bottom: 6px; line-height: 1.3;
+}
+.header-sub {
+  font-size: 13px; color: var(--text-2); line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+/* ── HL7 message block ── */
+.message-card {
+  background: var(--bg-code);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.25rem 1rem;
+  margin-bottom: 1.5rem;
+  overflow-x: auto;
+}
+.message-card .msg-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #5a6a8a; margin-bottom: 10px;
+}
+.hl7-line {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.9;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin: 0 -6px;
+  transition: background 0.15s;
+  position: relative;
+}
+.hl7-line:hover { background: rgba(255,255,255,0.06); }
+.hl7-line.active { background: rgba(255,255,255,0.10); }
+
+.seg-code { color: #79c0ff; font-weight: 600; }
+.seg-pipe  { color: #3a4a6a; }
+.seg-body  { color: #c9d1d9; }
+.seg-highlight { color: #ffa657; font-weight: 500; }
+
+.seg-tooltip {
+  display: none;
+  position: absolute;
+  left: 0; top: 100%;
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  font-family: var(--font);
+  font-size: 12px;
+  color: #e2e8f0;
+  white-space: normal;
+  z-index: 10;
+  width: 280px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+.hl7-line.active .seg-tooltip { display: block; }
+
+/* ── Section headings ── */
+.section-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 1rem;
+}
+.section-badge {
+  background: var(--teal-light);
+  color: var(--teal-dark);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 20px;
+  white-space: nowrap;
+}
+.section-title {
+  font-size: 15px; font-weight: 600; color: var(--text-1);
+}
+.section-desc {
+  font-size: 13px; color: var(--text-2); line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Part A: Matching ── */
+.part-a-wrap { margin-bottom: 2rem; }
+
+.match-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 520px) {
+  .match-grid { grid-template-columns: 1fr; }
+}
+
+.match-col-head {
+  font-size: 11px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-3); margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+.seg-chip {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 13px; font-weight: 500; color: var(--text-1);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+.seg-chip:hover   { background: var(--bg-dim); }
+.seg-chip.selected { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+.seg-chip.correct  { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); cursor: default; }
+.seg-chip.wrong    { background: var(--red-light); border-color: var(--red); color: var(--red); }
+.seg-chip .chip-icon { font-size: 12px; opacity: 0.6; }
+
+.def-chip {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-size: 12.5px; color: var(--text-1); line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.def-chip:hover   { background: var(--bg-dim); }
+.def-chip.targeted { background: var(--blue-light); border-color: var(--blue); }
+.def-chip.correct  { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); cursor: default; }
+.def-chip.wrong    { background: var(--red-light); border-color: var(--red); color: var(--red); }
+
+.match-feedback {
+  font-size: 12px; color: var(--text-2);
+  margin-top: 4px; min-height: 18px;
+}
+.match-feedback.ok  { color: var(--teal); }
+.match-feedback.err { color: var(--red); }
+
+.part-a-progress {
+  font-size: 12px; color: var(--text-3); margin-bottom: 10px;
+}
+
+/* ── Part B: Step-through questions ── */
+.part-b-wrap { margin-bottom: 2rem; }
+
+.q-pip-row {
+  display: flex; gap: 5px; margin-bottom: 1rem;
+}
+.q-pip {
+  height: 4px; flex: 1; border-radius: 2px;
+  background: var(--bg-dim); transition: background 0.3s;
+}
+.q-pip.done    { background: var(--teal); }
+.q-pip.current { background: var(--teal-mid); }
+
+.question-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.125rem;
+  animation: fadeUp 0.3s ease both;
+  transition: border-color 0.2s;
+}
+.question-card.answered-correct { border-color: var(--teal-mid); }
+.question-card.answered-wrong   { border-color: #e09090; }
+
+.q-number {
+  font-size: 10px; font-weight: 500; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px;
+}
+.q-text {
+  font-size: 14px; font-weight: 500; color: var(--text-1);
+  margin-bottom: 10px; line-height: 1.5;
+}
+
+.mc-options { display: flex; flex-direction: column; gap: 7px; }
+.mc-btn {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px; color: var(--text-1);
+  cursor: pointer; text-align: left; line-height: 1.4;
+  transition: background 0.12s, border-color 0.12s;
+}
+.mc-btn:hover { background: var(--bg-dim); }
+.mc-btn:disabled { cursor: default; }
+.mc-btn.correct { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+.mc-btn.wrong   { background: var(--red-light); border-color: var(--red); color: var(--red); }
+
+.q-feedback {
+  margin-top: 9px; font-size: 12.5px; line-height: 1.6;
+  display: none; padding: 8px 10px; border-radius: var(--radius-sm);
+}
+.q-feedback.correct { background: var(--teal-light); color: var(--teal-dark); display: block; }
+.q-feedback.wrong   { background: var(--red-light); color: var(--red); display: block; }
+
+.q-hint {
+  font-size: 11px; color: var(--text-3);
+  font-family: var(--mono); margin-top: 4px;
+}
+
+.q-next-btn {
+  margin-top: 12px; display: none;
+  background: var(--teal); border: none;
+  border-radius: var(--radius-sm); padding: 9px 20px;
+  font-size: 13px; font-weight: 500; color: #fff;
+  cursor: pointer; transition: background 0.15s;
+}
+.q-next-btn:hover { background: var(--teal-dark); }
+
+/* ── Final callout ── */
+.final-callout {
+  background: var(--bg-card);
+  border-left: 3px solid var(--teal);
+  border-top: 0.5px solid var(--border);
+  border-right: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1rem 1.125rem;
+  display: none;
+  animation: fadeUp 0.4s ease both;
+}
+.final-callout.visible { display: block; }
+.final-callout .fc-label {
+  font-size: 11px; font-weight: 500; color: var(--teal);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px;
+}
+.final-callout .fc-text {
+  font-size: 13px; color: var(--text-2); line-height: 1.7;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Divider ── */
+.divider {
+  border: none; border-top: 0.5px solid var(--border);
+  margin: 1.75rem 0;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="eyebrow">Activity E2 · Data Management in Healthcare</div>
+  <h1>HL7 Message Decoder</h1>
+  <p class="header-sub">An HL7 v2 order message arrived from Massachusetts General Hospital. Work through the two parts below to decode the clinical story inside it. Click any segment line to see what it does.</p>
+
+  <!-- ── HL7 Message Block ── -->
+  <div class="message-card">
+    <div class="msg-label">Raw HL7 v2 Message · Click a segment to inspect it</div>
+    <span class="hl7-line" data-seg="MSH" onclick="toggleSeg(this)">
+      <span class="seg-code">MSH</span><span class="seg-pipe">|</span><span class="seg-body">^~\&amp;|EPIC|MAGENERAL|SUNQUEST|MAGENERAL|</span><span class="seg-highlight">20241201143015</span><span class="seg-body">||ORM^O01|MSG20241201001|P|2.5</span>
+      <span class="seg-tooltip">Message Header — sent by EPIC at MA General to SUNQUEST on Dec 1, 2024 at 14:30:15. Message type ORM^O01 = Order message. Version 2.5.</span>
+    </span>
+    <span class="hl7-line" data-seg="PID" onclick="toggleSeg(this)">
+      <span class="seg-code">PID</span><span class="seg-pipe">|</span><span class="seg-body">1||MRN789012^^^MAGENERAL^MR||</span><span class="seg-highlight">CHEN^SARAH^L</span><span class="seg-body">||</span><span class="seg-highlight">19810422</span><span class="seg-body">|F|||55 River Road^^Cambridge^MA^02139||617-555-0198</span>
+      <span class="seg-tooltip">Patient ID — MRN 789012. Name: Chen, Sarah L. DOB: April 22, 1981. Female. Address: 55 River Road, Cambridge MA 02139.</span>
+    </span>
+    <span class="hl7-line" data-seg="PV1" onclick="toggleSeg(this)">
+      <span class="seg-code">PV1</span><span class="seg-pipe">|</span><span class="seg-body">1|E|</span><span class="seg-highlight">ED^ED03^B</span><span class="seg-body">^MAGENERAL^^^^ED||||||9876543^PATEL^ANITA^R^^^MD</span>
+      <span class="seg-tooltip">Patient Visit — Encounter type E (Emergency). Location: ED, Room ED03, Bed B. Attending: Dr. Anita R. Patel MD (NPI 9876543).</span>
+    </span>
+    <span class="hl7-line" data-seg="ORC" onclick="toggleSeg(this)">
+      <span class="seg-code">ORC</span><span class="seg-pipe">|</span><span class="seg-highlight">NW</span><span class="seg-body">|ORDER445566|||||||^^^^^</span><span class="seg-highlight">S</span><span class="seg-body">||20241201143015|9876543^PATEL^ANITA^R^^^MD</span>
+      <span class="seg-tooltip">Common Order — NW = New order. Order ID: ORDER445566. Priority: S = STAT (urgent). Ordered by Dr. Patel at 14:30:15.</span>
+    </span>
+    <span class="hl7-line" data-seg="OBR" onclick="toggleSeg(this)">
+      <span class="seg-code">OBR</span><span class="seg-pipe">|</span><span class="seg-body">1|ORDER445566||</span><span class="seg-highlight">6598-7^Troponin I.cardiac^LN</span><span class="seg-body">|||20241201143000</span>
+      <span class="seg-tooltip">Observation Request — LOINC code 6598-7 = Troponin I (cardiac). "LN" = LOINC coding system. Specimen collected at 14:30:00.</span>
+    </span>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Part A ── -->
+  <div class="part-a-wrap">
+    <div class="section-head">
+      <span class="section-badge">Part A</span>
+      <span class="section-title">Segment Identification</span>
+    </div>
+    <p class="section-desc">Each line of an HL7 message is called a segment. Match each 3-letter segment code to its purpose. Click a code on the left, then click its matching definition on the right.</p>
+    <div class="part-a-progress" id="partA-progress">0 of 5 matched</div>
+    <div class="match-grid">
+      <div>
+        <div class="match-col-head">Segment code</div>
+        <div id="seg-chips" style="display:flex;flex-direction:column;gap:7px;"></div>
+      </div>
+      <div>
+        <div class="match-col-head">Definition</div>
+        <div id="def-chips" style="display:flex;flex-direction:column;gap:7px;"></div>
+      </div>
+    </div>
+    <div class="match-feedback" id="match-feedback"></div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Part B ── -->
+  <div class="part-b-wrap">
+    <div class="section-head">
+      <span class="section-badge">Part B</span>
+      <span class="section-title">Field Decoder</span>
+    </div>
+    <p class="section-desc">Now read the specific values inside the message. Use the raw message above to answer each question. Answer to advance to the next one.</p>
+    <div class="q-pip-row" id="q-pips"></div>
+    <div id="questions"></div>
+  </div>
+
+  <!-- ── Final callout ── -->
+  <div class="final-callout" id="final-callout">
+    <div class="fc-label">You decoded an HL7 message</div>
+    <div class="fc-text">The pipe-delimited format looks intimidating at first, but every segment has a consistent structure — once you know what MSH, PID, PV1, ORC, and OBR mean, you can extract the clinical story from any HL7 v2 order message. In a real integration troubleshooting scenario, this skill — being able to read a raw message and identify what's missing or wrong — is exactly what an integration analyst needs when a lab order fails to appear on the lab's worklist.</div>
+  </div>
+
+</div>
+<script>
+/* ── Segment tooltip toggle ── */
+function toggleSeg(el) {
+  const wasActive = el.classList.contains('active');
+  document.querySelectorAll('.hl7-line').forEach(l => l.classList.remove('active'));
+  if (!wasActive) el.classList.add('active');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.hl7-line')) {
+    document.querySelectorAll('.hl7-line').forEach(l => l.classList.remove('active'));
+  }
+});
+
+/* ── Part A: Matching ── */
+const MATCHES = [
+  { seg: "MSH", def: "Message routing — who sent this, who receives it, when, what type" },
+  { seg: "PID", def: "Patient demographics — name, date of birth, address" },
+  { seg: "PV1", def: "Patient visit — where the patient is, what type of encounter" },
+  { seg: "ORC", def: "Order details — what was ordered, by whom, when" },
+  { seg: "OBR", def: "The specific test being ordered (troponin) with its LOINC code" }
+];
+
+let selectedSeg = null;
+let matched = {};
+
+function shuffled(arr) {
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function buildPartA() {
+  const segWrap = document.getElementById('seg-chips');
+  const defWrap = document.getElementById('def-chips');
+  segWrap.innerHTML = ''; defWrap.innerHTML = '';
+
+  shuffled(MATCHES).forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'seg-chip';
+    chip.dataset.seg = m.seg;
+    chip.innerHTML = m.seg + '<span class="chip-icon">→</span>';
+    if (matched[m.seg] === true) {
+      chip.classList.add('correct');
+    } else {
+      chip.onclick = () => selectSeg(m.seg);
+    }
+    segWrap.appendChild(chip);
+  });
+
+  shuffled(MATCHES).forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'def-chip';
+    chip.dataset.def = m.seg;
+    chip.textContent = m.def;
+    const alreadyMatchedSeg = Object.keys(matched).find(k => matched[k] === true && MATCHES.find(x => x.seg === k && x.def === m.def));
+    if (alreadyMatchedSeg) {
+      chip.classList.add('correct');
+    } else {
+      chip.onclick = () => selectDef(m.seg, chip);
+    }
+    defWrap.appendChild(chip);
+  });
+}
+
+function selectSeg(seg) {
+  if (matched[seg]) return;
+  selectedSeg = seg;
+  document.querySelectorAll('.seg-chip').forEach(c => {
+    c.classList.toggle('selected', c.dataset.seg === seg);
+  });
+  document.querySelectorAll('.def-chip').forEach(c => c.classList.remove('targeted'));
+  setMatchFeedback('', '');
+}
+
+function selectDef(defSeg, chip) {
+  if (!selectedSeg) {
+    chip.classList.toggle('targeted');
+    return;
+  }
+  const correct = selectedSeg === defSeg;
+  const segChip = document.querySelector('.seg-chip[data-seg="' + selectedSeg + '"]');
+
+  if (correct) {
+    matched[selectedSeg] = true;
+    segChip.classList.remove('selected');
+    segChip.classList.add('correct');
+    segChip.onclick = null;
+    chip.classList.add('correct');
+    chip.onclick = null;
+    setMatchFeedback('Correct!', 'ok');
+  } else {
+    segChip.classList.add('wrong');
+    chip.classList.add('wrong');
+    setTimeout(() => {
+      segChip.classList.remove('wrong', 'selected');
+      chip.classList.remove('wrong', 'targeted');
+    }, 700);
+    setMatchFeedback('Not quite — try a different definition.', 'err');
+  }
+
+  selectedSeg = null;
+  document.querySelectorAll('.seg-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.def-chip').forEach(c => c.classList.remove('targeted'));
+
+  const count = Object.keys(matched).length;
+  document.getElementById('partA-progress').textContent = count + ' of 5 matched';
+  checkCompletion();
+}
+
+function setMatchFeedback(msg, type) {
+  const el = document.getElementById('match-feedback');
+  el.textContent = msg;
+  el.className = 'match-feedback' + (type ? ' ' + type : '');
+}
+
+/* ── Part B: Step-through questions ── */
+const QUESTIONS = [
+  {
+    q: "What is this patient's last name?",
+    hint: "PID segment, field 5",
+    options: ["Patel", "Chen", "Sunquest", "General"],
+    answer: 1,
+    feedback: "Chen — found in PID field 5: CHEN^SARAH^L. In HL7, the ^ separates name components and last name always comes first."
+  },
+  {
+    q: "What is the patient's date of birth?",
+    hint: "PID segment, field 7",
+    options: ["December 1, 2024", "April 22, 1981", "January 4, 1982", "October 8, 1981"],
+    answer: 1,
+    feedback: "April 22, 1981 — PID field 7 is 19810422, which follows YYYYMMDD format. Always check the format — 20241201 is the message date, not the birthdate."
+  },
+  {
+    q: "Where is the patient located right now?",
+    hint: "PV1 segment, field 3",
+    options: ["Cardiology Unit, Room 4B", "Emergency Department, Room ED03, Bed B", "ICU, Bed 12", "Outpatient Clinic, Room 7"],
+    answer: 1,
+    feedback: "Emergency Department, Room ED03, Bed B — PV1 field 3 reads ED^ED03^B. The ^ separates unit, room, and bed. The encounter type E also confirms Emergency."
+  },
+  {
+    q: "Which physician ordered this test?",
+    hint: "ORC segment, field 12",
+    options: ["Dr. Sarah Chen, MD", "Dr. Anita R. Patel, MD", "Dr. MGGeneral, DO", "Dr. Sunquest, NP"],
+    answer: 1,
+    feedback: "Dr. Anita R. Patel, MD — ORC field 12: 9876543^PATEL^ANITA^R^^^MD. The NPI (9876543) comes first, then last name, first name, middle initial, and credentials."
+  },
+  {
+    q: "What test was ordered, and how do you know it uses a standardized code?",
+    hint: "OBR segment, last field",
+    options: [
+      "BMP — indicated by the BMP prefix in the segment",
+      "Troponin I (cardiac) — 'LN' identifies it as a LOINC code",
+      "Troponin I (cardiac) — 'EPIC' identifies the ordering system",
+      "CBC — indicated by the CBC^ORDER code"
+    ],
+    answer: 1,
+    feedback: "Troponin I (cardiac), LOINC code 6598-7. The OBR field reads 6598-7^Troponin I.cardiac^LN — the ^ separates code number, display name, and coding system. 'LN' = LOINC, a standardized lab coding system."
+  },
+  {
+    q: "What type of order is this — new, cancelled, or a result?",
+    hint: "ORC segment, field 1",
+    options: ["Cancelled order (CA)", "New order (NW)", "Result (RE)", "Pending order (PA)"],
+    answer: 1,
+    feedback: "New order — ORC field 1 is NW, which stands for New Order. Other common values: CA = Cancel, DC = Discontinue, RE = Observations to follow (a result)."
+  },
+  {
+    q: "What does the 'S' in the ORC timing field mean, and why does it matter clinically?",
+    hint: "ORC segment, look for ^^^^^S",
+    options: [
+      "Scheduled — the order will run at a future time",
+      "Sent — confirms the message was transmitted",
+      "STAT — the order is urgent and should be processed immediately",
+      "Standard — routine priority, process in normal queue"
+    ],
+    answer: 2,
+    feedback: "STAT — the order is urgent and should be processed immediately. This is the flag that triggers priority processing in the lab and should trigger real-time (not batch) interface routing. Missing or incorrect priority flags are a common source of patient safety incidents."
+  }
+];
+
+let qCurrent = 0;
+let qAnswers = new Array(QUESTIONS.length).fill(null);
+
+function buildPips() {
+  const row = document.getElementById('q-pips');
+  row.innerHTML = '';
+  QUESTIONS.forEach((_, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'q-pip' +
+      (i < qCurrent ? ' done' : i === qCurrent ? ' current' : '');
+    row.appendChild(pip);
+  });
+}
+
+function renderQuestion() {
+  buildPips();
+  const wrap = document.getElementById('questions');
+  wrap.innerHTML = '';
+
+  const q = QUESTIONS[qCurrent];
+  const answered = qAnswers[qCurrent] !== null;
+  const correct = answered && qAnswers[qCurrent] === q.answer;
+
+  const card = document.createElement('div');
+  card.className = 'question-card' + (answered ? ' answered-' + (correct ? 'correct' : 'wrong') : '');
+
+  const num = document.createElement('div');
+  num.className = 'q-number';
+  num.textContent = 'Question ' + (qCurrent + 1) + ' of ' + QUESTIONS.length;
+  card.appendChild(num);
+
+  const qtext = document.createElement('div');
+  qtext.className = 'q-text';
+  qtext.textContent = q.q;
+  card.appendChild(qtext);
+
+  const hint = document.createElement('div');
+  hint.className = 'q-hint';
+  hint.textContent = 'Hint: ' + q.hint;
+  card.appendChild(hint);
+
+  const opts = document.createElement('div');
+  opts.className = 'mc-options';
+  opts.style.marginTop = '10px';
+  q.options.forEach((opt, oi) => {
+    const btn = document.createElement('button');
+    btn.className = 'mc-btn';
+    btn.textContent = opt;
+    if (answered) {
+      btn.disabled = true;
+      if (oi === q.answer) btn.classList.add('correct');
+      else if (oi === qAnswers[qCurrent]) btn.classList.add('wrong');
+    } else {
+      btn.onclick = () => answerQ(oi);
+    }
+    opts.appendChild(btn);
+  });
+  card.appendChild(opts);
+
+  const fb = document.createElement('div');
+  if (answered) {
+    fb.className = 'q-feedback ' + (correct ? 'correct' : 'wrong');
+    fb.textContent = q.feedback;
+  } else {
+    fb.className = 'q-feedback';
+  }
+  card.appendChild(fb);
+
+  const isLast = qCurrent === QUESTIONS.length - 1;
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'q-next-btn';
+  nextBtn.textContent = isLast ? 'Finish →' : 'Next question →';
+  nextBtn.style.display = answered ? 'inline-block' : 'none';
+  nextBtn.onclick = () => {
+    if (isLast) {
+      checkCompletion();
+    } else {
+      qCurrent++;
+      renderQuestion();
+      document.getElementById('questions').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+  card.appendChild(nextBtn);
+
+  wrap.appendChild(card);
+}
+
+function answerQ(oi) {
+  qAnswers[qCurrent] = oi;
+  renderQuestion();
+}
+
+function checkCompletion() {
+  const partADone = Object.keys(matched).length === MATCHES.length;
+  const partBDone = qAnswers.every(a => a !== null);
+  if (partADone && partBDone) {
+    document.getElementById('final-callout').classList.add('visible');
+    document.getElementById('final-callout').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else if (partBDone && !partADone) {
+    document.getElementById('final-callout').style.display = 'none';
+  }
+}
+
+buildPartA();
+renderQuestion();
+</script>
+</body>
+</html>
