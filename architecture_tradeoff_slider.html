@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Trade-Off Slider — HINF 5102</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:    #f4f3f0;
+  --bg-card:    #ffffff;
+  --bg-surface: #f0efe9;
+  --bg-dim:     #e8e7e1;
+  --text-1:     #1a1918;
+  --text-2:     #5a5955;
+  --text-3:     #9a9990;
+  --border:     rgba(0,0,0,0.10);
+  --border-md:  rgba(0,0,0,0.18);
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --teal:       #1D9E75;
+  --teal-light: #E1F5EE;
+  --teal-mid:   #5DCAA5;
+  --amber:      #BA7517;
+  --amber-light:#FAEEDA;
+  --red:        #A32D2D;
+  --red-light:  #FCEBEB;
+  --font:       system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:    #181816;
+    --bg-card:    #222220;
+    --bg-surface: #2a2a28;
+    --bg-dim:     #323230;
+    --text-1:     #f0efeb;
+    --text-2:     #a0a098;
+    --text-3:     #666660;
+    --border:     rgba(255,255,255,0.08);
+    --border-md:  rgba(255,255,255,0.15);
+    --teal-light: #0a3d2b;
+    --amber-light:#3d2a08;
+    --red-light:  #3d1010;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+
+#app {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.header {
+  margin-bottom: 2rem;
+}
+.header .eyebrow {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 6px;
+}
+.header h1 {
+  font-size: 20px; font-weight: 600; color: var(--text-1);
+  margin-bottom: 6px; line-height: 1.3;
+}
+.header p {
+  font-size: 13px; color: var(--text-2); line-height: 1.6;
+}
+
+/* ── Spectrum track ── */
+.spectrum-wrap {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.5rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.spectrum-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+}
+.spectrum-labels span {
+  font-size: 11px; font-weight: 500; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.track-area {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.track-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--teal) 0%, #e8c46a 50%, #d07070 100%);
+  position: relative;
+}
+
+.pip-row {
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 50%;
+  left: 0; right: 0;
+  transform: translateY(-50%);
+  padding: 0 1px;
+}
+
+.pip {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border-md);
+  cursor: pointer;
+  transition: border-color var(--transition), transform 0.15s;
+  position: relative;
+  z-index: 1;
+}
+.pip:hover { transform: scale(1.2); }
+.pip.active {
+  border-color: var(--text-1);
+  background: var(--text-1);
+  transform: scale(1.35);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
+}
+
+.position-label {
+  text-align: center;
+  font-size: 15px; font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 2px;
+  min-height: 24px;
+  transition: opacity 0.2s;
+}
+.position-sub {
+  text-align: center;
+  font-size: 12px; color: var(--text-2);
+  min-height: 18px;
+}
+
+/* ── Nav buttons ── */
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 1rem;
+}
+.nav-btn {
+  background: transparent;
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 7px 18px;
+  font-size: 13px; color: var(--text-1);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.nav-btn:hover { background: var(--bg-surface); }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+.pos-counter {
+  font-size: 12px; color: var(--text-3); min-width: 48px; text-align: center;
+}
+
+/* ── Metrics grid ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 1.25rem;
+}
+
+.metric-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  transition: border-color 0.2s;
+}
+.metric-card.highlight {
+  border-color: var(--teal-mid);
+}
+
+.metric-header {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 6px;
+}
+.metric-icon { font-size: 15px; line-height: 1; }
+.metric-label {
+  font-size: 11px; font-weight: 500; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.metric-value {
+  font-size: 14px; font-weight: 600; color: var(--text-1);
+  line-height: 1.4;
+  transition: opacity 0.2s;
+}
+.metric-value.fading { opacity: 0; }
+
+.metric-bar-wrap {
+  margin-top: 7px;
+  height: 3px;
+  background: var(--bg-dim);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.metric-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--transition), background-color var(--transition);
+}
+
+/* ── Callout ── */
+.callout {
+  background: var(--bg-card);
+  border-left: 3px solid var(--teal);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1rem 1.125rem;
+  border-top: 0.5px solid var(--border);
+  border-right: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+}
+.callout-label {
+  font-size: 11px; font-weight: 500; color: var(--teal);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px;
+}
+.callout-text {
+  font-size: 13px; color: var(--text-2); line-height: 1.7;
+  transition: opacity 0.2s;
+}
+.callout-text.fading { opacity: 0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div class="eyebrow">Activity E5 · Data Management in Healthcare</div>
+    <h1>EHR Architecture Trade-Off Explorer</h1>
+    <p>Move through the five architecture positions to see how key metrics shift across the best-of-breed to enterprise spectrum.</p>
+  </div>
+
+  <!-- Spectrum -->
+  <div class="spectrum-wrap">
+    <div class="spectrum-labels">
+      <span>Best-of-Breed</span>
+      <span>Enterprise</span>
+    </div>
+
+    <div class="track-area">
+      <div class="track-bar"></div>
+      <div class="pip-row" id="pip-row"></div>
+    </div>
+
+    <div class="position-label" id="pos-label"></div>
+    <div class="position-sub" id="pos-sub"></div>
+
+    <div class="nav-row">
+      <button class="nav-btn" id="btn-prev" onclick="move(-1)">← Previous</button>
+      <span class="pos-counter" id="pos-counter"></span>
+      <button class="nav-btn" id="btn-next" onclick="move(1)">Next →</button>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics-grid" id="metrics-grid"></div>
+
+  <!-- Callout -->
+  <div class="callout">
+    <div class="callout-label" id="callout-label"></div>
+    <div class="callout-text" id="callout-text"></div>
+  </div>
+
+</div>
+
+<script>
+const POSITIONS = [
+  {
+    label: "Full Best-of-Breed",
+    sub: "Every department selects its own specialized system",
+    metrics: {
+      interfaces:    { value: "~1,225",    bar: 100, color: "#d07070" },
+      cost:          { value: "$15–20M",   bar: 100, color: "#d07070" },
+      specialty:     { value: "Excellent", bar: 100, color: "#1D9E75" },
+      clinician:     { value: "Multiple logins, fragmented data", bar: 20, color: "#d07070" },
+      lockin:        { value: "Low",        bar: 15,  color: "#1D9E75" },
+      implRisk:      { value: "High (many vendors)", bar: 85, color: "#d07070" }
+    },
+    calloutLabel: "Position 1 — Full Best-of-Breed",
+    callout: "Each department gets exactly what they need — but 1,225 interfaces is an unmanageable number. IT spends most of its time maintaining connections, not adding value. When the lab system upgrades, 50 interfaces need retesting. Clinicians have 6 different logins. This is where many hospitals were in the 1990s."
+  },
+  {
+    label: "Mostly Best-of-Breed",
+    sub: "Enterprise EHR core + most ancillary systems are specialized",
+    metrics: {
+      interfaces:    { value: "~400",      bar: 78,  color: "#c08040" },
+      cost:          { value: "$10–12M",   bar: 72,  color: "#c08040" },
+      specialty:     { value: "Good",      bar: 80,  color: "#1D9E75" },
+      clinician:     { value: "Mostly unified", bar: 50, color: "#BA7517" },
+      lockin:        { value: "Low–Medium", bar: 30, color: "#85c070" },
+      implRisk:      { value: "Medium–High", bar: 65, color: "#c08040" }
+    },
+    calloutLabel: "Position 2 — Mostly Best-of-Breed",
+    callout: "An enterprise EHR reduces the integration burden significantly — most clinical data flows through one system. But specialty departments (radiology, cardiology, oncology) still use dedicated systems, requiring interfaces. This is a common starting point for health systems mid-modernization."
+  },
+  {
+    label: "Hybrid (Modern Standard)",
+    sub: "Enterprise EHR + select best-of-breed for high-stakes specialties",
+    metrics: {
+      interfaces:    { value: "~75",       bar: 40,  color: "#85c070" },
+      cost:          { value: "$3–5M",     bar: 38,  color: "#85c070" },
+      specialty:     { value: "Good",      bar: 80,  color: "#1D9E75" },
+      clinician:     { value: "Unified with specialty tools", bar: 75, color: "#1D9E75" },
+      lockin:        { value: "Medium",    bar: 50,  color: "#BA7517" },
+      implRisk:      { value: "Medium",    bar: 50,  color: "#BA7517" }
+    },
+    calloutLabel: "Position 3 — Hybrid (Modern Standard)",
+    callout: "This is where most sophisticated health systems land today. An enterprise EHR handles the bulk of clinical and administrative work. Specialty systems are retained where the functionality gap is substantial and the revenue justifies it. Interface count is manageable. Clinicians get unified data for most workflows."
+  },
+  {
+    label: "Mostly Enterprise",
+    sub: "Enterprise suite with 1–2 retained best-of-breed systems",
+    metrics: {
+      interfaces:    { value: "~30",       bar: 18,  color: "#1D9E75" },
+      cost:          { value: "$1–2M",     bar: 15,  color: "#1D9E75" },
+      specialty:     { value: "Fair",      bar: 45,  color: "#BA7517" },
+      clinician:     { value: "Unified",   bar: 90,  color: "#1D9E75" },
+      lockin:        { value: "High",      bar: 78,  color: "#d07070" },
+      implRisk:      { value: "Medium",    bar: 50,  color: "#BA7517" }
+    },
+    calloutLabel: "Position 4 — Mostly Enterprise",
+    callout: "The enterprise vendor handles nearly everything. Integration complexity is low, the user experience is cohesive, and upgrades are coordinated. But specialty departments feel the functionality squeeze — interventional cardiologists and radiation oncologists may be working with tools that don't match their clinical needs."
+  },
+  {
+    label: "Full Enterprise",
+    sub: "Single vendor for all clinical and administrative functions",
+    metrics: {
+      interfaces:    { value: "~15",       bar: 8,   color: "#1D9E75" },
+      cost:          { value: "<$1M",      bar: 6,   color: "#1D9E75" },
+      specialty:     { value: "Basic",     bar: 20,  color: "#d07070" },
+      clinician:     { value: "Fully unified", bar: 100, color: "#1D9E75" },
+      lockin:        { value: "Very High", bar: 100, color: "#d07070" },
+      implRisk:      { value: "High (single point of failure)", bar: 85, color: "#d07070" }
+    },
+    calloutLabel: "Position 5 — Full Enterprise",
+    callout: "Maximum integration, minimum complexity — but you're fully dependent on a single vendor. If they raise prices, you have limited leverage. If their system fails, everything fails. And specialty departments either adapt to 'good enough' functionality or find workarounds. This works well for community hospitals with standard workflows; it's more problematic for academic medical centers with complex specialties."
+  }
+];
+
+const METRIC_META = [
+  { key: "interfaces", icon: "🔌", label: "Interface Count",        note: "50-system hospital" },
+  { key: "cost",       icon: "💰", label: "Integration Cost",       note: "10-yr estimate" },
+  { key: "specialty",  icon: "⭐", label: "Specialty Functionality", note: "" },
+  { key: "clinician",  icon: "👩‍⚕️", label: "Clinician Experience",   note: "" },
+  { key: "lockin",     icon: "🔒", label: "Vendor Lock-In Risk",     note: "" },
+  { key: "implRisk",   icon: "🚨", label: "Implementation Risk",     note: "" }
+];
+
+let current = 0;
+let transitioning = false;
+
+function buildPips() {
+  const row = document.getElementById('pip-row');
+  row.innerHTML = '';
+  POSITIONS.forEach((_, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'pip' + (i === current ? ' active' : '');
+    pip.title = POSITIONS[i].label;
+    pip.onclick = () => goTo(i);
+    row.appendChild(pip);
+  });
+}
+
+function buildMetrics() {
+  const grid = document.getElementById('metrics-grid');
+  grid.innerHTML = '';
+  METRIC_META.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'metric-card';
+    card.id = 'card-' + m.key;
+    card.innerHTML =
+      '<div class="metric-header">' +
+        '<span class="metric-icon">' + m.icon + '</span>' +
+        '<span class="metric-label">' + m.label + (m.note ? ' <span style="font-weight:400;text-transform:none;letter-spacing:0">(' + m.note + ')</span>' : '') + '</span>' +
+      '</div>' +
+      '<div class="metric-value" id="val-' + m.key + '"></div>' +
+      '<div class="metric-bar-wrap"><div class="metric-bar" id="bar-' + m.key + '"></div></div>';
+    grid.appendChild(card);
+  });
+}
+
+function goTo(idx) {
+  if (transitioning || idx === current) return;
+  transitioning = true;
+
+  // fade out values
+  METRIC_META.forEach(m => {
+    document.getElementById('val-' + m.key).classList.add('fading');
+  });
+  document.getElementById('callout-text').classList.add('fading');
+
+  setTimeout(() => {
+    current = idx;
+    applyState();
+    buildPips();
+
+    // fade in
+    METRIC_META.forEach(m => {
+      document.getElementById('val-' + m.key).classList.remove('fading');
+    });
+    document.getElementById('callout-text').classList.remove('fading');
+    transitioning = false;
+  }, 200);
+}
+
+function move(dir) {
+  const next = current + dir;
+  if (next < 0 || next >= POSITIONS.length) return;
+  goTo(next);
+}
+
+function applyState() {
+  const p = POSITIONS[current];
+
+  document.getElementById('pos-label').textContent = p.label;
+  document.getElementById('pos-sub').textContent = p.sub;
+  document.getElementById('pos-counter').textContent = (current + 1) + ' of ' + POSITIONS.length;
+  document.getElementById('btn-prev').disabled = current === 0;
+  document.getElementById('btn-next').disabled = current === POSITIONS.length - 1;
+
+  METRIC_META.forEach(m => {
+    const data = p.metrics[m.key];
+    document.getElementById('val-' + m.key).textContent = data.value;
+    const bar = document.getElementById('bar-' + m.key);
+    bar.style.width = data.bar + '%';
+    bar.style.backgroundColor = data.color;
+  });
+
+  document.getElementById('callout-label').textContent = p.calloutLabel;
+  document.getElementById('callout-text').textContent = p.callout;
+}
+
+buildPips();
+buildMetrics();
+applyState();
+</script>
+</body>
+</html>
