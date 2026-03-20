@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X12 Transaction Sorter: Part B — Chronological Sequence</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:     #f4f3f0;
+  --bg-card:     #ffffff;
+  --bg-surface:  #f0efe9;
+  --bg-dim:      #e8e7e1;
+  --text-1:      #1a1918;
+  --text-2:      #5a5955;
+  --text-3:      #9a9990;
+  --border:      rgba(0,0,0,0.10);
+  --border-md:   rgba(0,0,0,0.18);
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --teal:        #1D9E75;
+  --teal-light:  #E1F5EE;
+  --teal-dark:   #085041;
+  --teal-mid:    #5DCAA5;
+  --red:         #A32D2D;
+  --red-light:   #FCEBEB;
+  --font:        system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:        'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:     #181816;
+    --bg-card:     #222220;
+    --bg-surface:  #2a2a28;
+    --bg-dim:      #323230;
+    --text-1:      #f0efeb;
+    --text-2:      #a0a098;
+    --text-3:      #666660;
+    --border:      rgba(255,255,255,0.08);
+    --border-md:   rgba(255,255,255,0.15);
+    --teal-light:  #0a3d2b;
+    --red-light:   #3d1010;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+#app { max-width: 760px; margin: 0 auto; }
+
+.eyebrow {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 6px;
+}
+h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; line-height: 1.3; }
+.header-sub { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 1.75rem; }
+
+/* ── Reference list ── */
+.ref-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.125rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.ref-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 10px;
+}
+.ref-item {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 6px 0; border-bottom: 0.5px solid var(--border);
+  font-size: 13px; color: var(--text-2); line-height: 1.5;
+}
+.ref-item:last-child { border-bottom: none; }
+.ref-letter { font-size: 11px; font-weight: 600; color: var(--text-3); min-width: 18px; flex-shrink: 0; }
+
+.divider { border: none; border-top: 0.5px solid var(--border); margin: 1.75rem 0; }
+
+/* ── Section ── */
+.section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+.section-badge {
+  background: var(--teal-light); color: var(--teal-dark);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 20px;
+}
+.section-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
+.section-desc  { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 1.25rem; }
+
+/* ── Pip progress ── */
+.q-pip-row { display: flex; gap: 5px; margin-bottom: 1.25rem; }
+.q-pip {
+  height: 4px; flex: 1; border-radius: 2px;
+  background: var(--bg-dim); transition: background 0.3s;
+}
+.q-pip.done    { background: var(--teal); }
+.q-pip.current { background: var(--teal-mid); }
+
+/* ── Question card ── */
+.question-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.125rem 1.25rem;
+  animation: fadeUp 0.3s ease both;
+  transition: border-color 0.2s;
+}
+.question-card.answered-correct { border-color: var(--teal-mid); }
+.question-card.answered-wrong   { border-color: #e09090; }
+
+.q-number {
+  font-size: 10px; font-weight: 500; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px;
+}
+.q-text {
+  font-size: 14px; font-weight: 500; color: var(--text-1);
+  margin-bottom: 12px; line-height: 1.55;
+}
+
+.mc-options { display: flex; flex-direction: column; gap: 7px; }
+.mc-btn {
+  background: var(--bg-surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+  font-size: 13px; color: var(--text-1); cursor: pointer;
+  text-align: left; line-height: 1.45;
+  transition: background 0.12s, border-color 0.12s;
+}
+.mc-btn:hover    { background: var(--bg-dim); }
+.mc-btn:disabled { cursor: default; }
+.mc-btn.correct  { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+.mc-btn.wrong    { background: var(--red-light);  border-color: var(--red);  color: var(--red); }
+
+.q-feedback {
+  margin-top: 10px; font-size: 12.5px; line-height: 1.65;
+  display: none; padding: 9px 11px; border-radius: var(--radius-sm);
+}
+.q-feedback.correct { background: var(--teal-light); color: var(--teal-dark); display: block; }
+.q-feedback.wrong   { background: var(--red-light);  color: var(--red);       display: block; }
+
+.q-next-btn {
+  margin-top: 12px; display: none;
+  background: var(--teal); border: none;
+  border-radius: var(--radius-sm); padding: 9px 20px;
+  font-size: 13px; font-weight: 500; color: #fff;
+  cursor: pointer; transition: background 0.15s;
+}
+.q-next-btn:hover { background: var(--teal-dark); }
+
+/* ── Final summary timeline ── */
+.summary-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.375rem;
+  margin-top: 1.5rem;
+  display: none;
+  animation: fadeUp 0.4s ease both;
+}
+.summary-card.visible { display: block; }
+.summary-label {
+  font-size: 11px; font-weight: 500; color: var(--teal);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 1rem;
+}
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-row {
+  display: flex; align-items: stretch; gap: 14px;
+}
+.tl-left {
+  display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0;
+}
+.tl-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--teal-light); border: 2px solid var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: var(--teal-dark);
+  flex-shrink: 0;
+}
+.tl-line {
+  width: 2px; flex: 1; background: var(--border);
+  margin: 2px 0;
+}
+.tl-row:last-child .tl-line { display: none; }
+.tl-content {
+  padding: 3px 0 16px;
+  flex: 1;
+}
+.tl-event {
+  font-size: 13px; font-weight: 500; color: var(--text-1); line-height: 1.45;
+}
+.tl-code {
+  display: inline-block; margin-top: 4px;
+  font-family: var(--mono); font-size: 11px;
+  background: var(--bg-surface); color: var(--text-3);
+  padding: 2px 7px; border-radius: 4px;
+  border: 0.5px solid var(--border-md);
+}
+
+.summary-footer {
+  margin-top: 1rem; padding-top: 1rem;
+  border-top: 0.5px solid var(--border);
+  font-size: 13px; color: var(--text-2); line-height: 1.65;
+  font-style: italic;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="eyebrow">Activity E6B · Data Management in Healthcare</div>
+  <h1>X12 Transaction Sorter — Part B</h1>
+  <p class="header-sub">The same 8 encounter events from Part A are shown below for reference. Now put them in the correct chronological order by answering the sequencing questions.</p>
+
+  <!-- Reference list -->
+  <div class="ref-card">
+    <div class="ref-label">The 8 encounter events — reference list</div>
+    <div class="ref-item"><span class="ref-letter">A</span><span>The patient's health plan sends the provider an explanation of payment, showing the allowed amount, adjustments, and patient responsibility.</span></div>
+    <div class="ref-item"><span class="ref-letter">B</span><span>The practice management system queries the health plan to confirm the patient's coverage, deductible status, and copay.</span></div>
+    <div class="ref-item"><span class="ref-letter">C</span><span>The patient's physician determines an MRI is needed and submits clinical documentation to the health plan for approval before scheduling.</span></div>
+    <div class="ref-item"><span class="ref-letter">D</span><span>The provider submits a detailed claim to the health plan listing the diagnoses, procedures performed, and charges.</span></div>
+    <div class="ref-item"><span class="ref-letter">E</span><span>The health plan sends the provider a payment via electronic funds transfer.</span></div>
+    <div class="ref-item"><span class="ref-letter">F</span><span>The health plan approves the MRI request and returns an authorization number.</span></div>
+    <div class="ref-item"><span class="ref-letter">G</span><span>The provider checks the status of a claim submitted three weeks ago that hasn't been paid or denied yet.</span></div>
+    <div class="ref-item"><span class="ref-letter">H</span><span>The patient completes pre-registration online, entering insurance card information.</span></div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="section-head">
+    <span class="section-badge">Part B</span>
+    <span class="section-title">Chronological Sequence</span>
+  </div>
+  <p class="section-desc">Answer each "what comes next" question to work through the complete encounter lifecycle. The full sequence is revealed at the end.</p>
+
+  <div class="q-pip-row" id="q-pips"></div>
+  <div id="questions"></div>
+
+  <!-- Final summary timeline -->
+  <div class="summary-card" id="summary">
+    <div class="summary-label">Complete administrative lifecycle — one patient encounter</div>
+    <div class="timeline" id="timeline"></div>
+    <div class="summary-footer">In the next lesson, you'll learn exactly what data travels in each of these transactions and what can go wrong at each step.</div>
+  </div>
+
+</div>
+<script>
+const QUESTIONS = [
+  {
+    q: "Of the following, which happens FIRST in the patient encounter lifecycle?",
+    options: [
+      "Prior authorization request submitted",
+      "Claim submitted for services",
+      "Patient completes pre-registration with insurance information",
+      "Explanation of payment received"
+    ],
+    answer: 2,
+    feedback: "Pre-registration and eligibility verification happen before the patient is even seen — often days before the appointment, or at minimum at check-in. Everything else follows from that initial coverage confirmation."
+  },
+  {
+    q: "After the practice confirms the patient's eligibility and the patient is seen, the physician determines an MRI is needed. What should happen BEFORE the MRI is scheduled?",
+    options: [
+      "Submit a claim for the MRI",
+      "Check claim status",
+      "Receive the explanation of payment",
+      "Submit a prior authorization request and wait for approval"
+    ],
+    answer: 3,
+    feedback: "Authorization must be obtained before delivering the authorized service — not after. Scheduling the MRI before receiving an authorization number risks a CO-197 denial (\"precertification not obtained\") even if the service is medically necessary."
+  },
+  {
+    q: "The MRI is approved and performed. The physician documents the encounter. What is the provider's NEXT administrative step?",
+    options: [
+      "Check claim status via 276/277",
+      "Receive the 835 remittance",
+      "Submit the claim (837) with the authorization number attached",
+      "Contact the health plan about the EFT payment"
+    ],
+    answer: 2,
+    feedback: "After service delivery, the provider submits the claim. The authorization number obtained in the prior step must be included — omitting it triggers an automatic CO-197 denial. The 837 claim is the formal request for payment."
+  },
+  {
+    q: "Three weeks after submitting the claim, the provider hasn't received payment or a denial. What is the appropriate next step?",
+    options: [
+      "Resubmit the original claim",
+      "Appeal the denial",
+      "Contact the patient about their balance",
+      "Submit a claim status inquiry (276) to check where the claim is in processing"
+    ],
+    answer: 3,
+    feedback: "The 276 (claim status inquiry) / 277 (response) transaction exists exactly for this scenario. Before resubmitting or escalating, the provider should find out what's actually happening with the claim — it may be in process, pended for additional information, or lost entirely. Resubmitting without checking first can trigger a duplicate claim denial."
+  },
+  {
+    q: "What is the CORRECT sequence for the final two events — remittance and payment?",
+    options: [
+      "EFT payment arrives first, then the 835 remittance explains it",
+      "835 remittance arrives simultaneously with or just before the EFT payment, explaining what was paid and why",
+      "835 remittance arrives weeks after the EFT payment",
+      "The sequence varies — there's no standard order"
+    ],
+    answer: 1,
+    feedback: "The 835 Electronic Remittance Advice accompanies the ACH/EFT payment — they travel together. The 835 is what allows the practice management system to auto-post the payment correctly: it contains the claim-by-claim breakdown of allowed amounts, adjustments, deductibles applied, and patient responsibility. Without the 835, auto-posting is impossible and staff must post payments manually."
+  }
+];
+
+const TIMELINE = [
+  { num: 1, event: "Patient completes pre-registration with insurance information",              code: "Eligibility begins here" },
+  { num: 2, event: "Practice queries health plan — eligibility confirmed, copay identified",     code: "270/271" },
+  { num: 3, event: "Physician determines MRI is needed — prior authorization submitted",         code: "278 request" },
+  { num: 4, event: "Health plan approves MRI — authorization number returned",                   code: "278 response: A1" },
+  { num: 5, event: "MRI performed; physician documents encounter",                               code: "Clinical documentation" },
+  { num: 6, event: "Provider submits claim with authorization number",                           code: "837P or 837I" },
+  { num: 7, event: "Provider checks claim status three weeks later",                             code: "276/277" },
+  { num: 8, event: "Health plan sends remittance advice and EFT payment",                        code: "835 + ACH" }
+];
+
+let qCurrent = 0;
+let qAnswers = new Array(QUESTIONS.length).fill(null);
+
+function buildPips() {
+  const row = document.getElementById('q-pips');
+  row.innerHTML = '';
+  QUESTIONS.forEach((_, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'q-pip' + (i < qCurrent ? ' done' : i === qCurrent ? ' current' : '');
+    row.appendChild(pip);
+  });
+}
+
+function renderQuestion() {
+  buildPips();
+  const wrap = document.getElementById('questions');
+  wrap.innerHTML = '';
+
+  const q = QUESTIONS[qCurrent];
+  const answered = qAnswers[qCurrent] !== null;
+  const correct  = answered && qAnswers[qCurrent] === q.answer;
+
+  const card = document.createElement('div');
+  card.className = 'question-card' + (answered ? ' answered-' + (correct ? 'correct' : 'wrong') : '');
+
+  const num = document.createElement('div');
+  num.className = 'q-number';
+  num.textContent = 'Question ' + (qCurrent + 1) + ' of ' + QUESTIONS.length;
+  card.appendChild(num);
+
+  const qtext = document.createElement('div');
+  qtext.className = 'q-text';
+  qtext.textContent = q.q;
+  card.appendChild(qtext);
+
+  const opts = document.createElement('div');
+  opts.className = 'mc-options';
+  q.options.forEach((opt, oi) => {
+    const btn = document.createElement('button');
+    btn.className = 'mc-btn';
+    btn.textContent = opt;
+    if (answered) {
+      btn.disabled = true;
+      if (oi === q.answer) btn.classList.add('correct');
+      else if (oi === qAnswers[qCurrent]) btn.classList.add('wrong');
+    } else {
+      btn.onclick = () => answerQ(oi);
+    }
+    opts.appendChild(btn);
+  });
+  card.appendChild(opts);
+
+  const fb = document.createElement('div');
+  fb.className = answered ? 'q-feedback ' + (correct ? 'correct' : 'wrong') : 'q-feedback';
+  if (answered) fb.textContent = q.feedback;
+  card.appendChild(fb);
+
+  const isLast = qCurrent === QUESTIONS.length - 1;
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'q-next-btn';
+  nextBtn.textContent = isLast ? 'See full sequence →' : 'Next question →';
+  nextBtn.style.display = answered ? 'inline-block' : 'none';
+  nextBtn.onclick = () => {
+    if (isLast) {
+      showSummary();
+    } else {
+      qCurrent++;
+      renderQuestion();
+      document.getElementById('questions').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  };
+  card.appendChild(nextBtn);
+  wrap.appendChild(card);
+}
+
+function answerQ(oi) {
+  qAnswers[qCurrent] = oi;
+  renderQuestion();
+}
+
+function showSummary() {
+  const summary = document.getElementById('summary');
+  summary.classList.add('visible');
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  TIMELINE.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'tl-row';
+    row.innerHTML =
+      '<div class="tl-left"><div class="tl-dot">' + item.num + '</div><div class="tl-line"></div></div>' +
+      '<div class="tl-content"><div class="tl-event">' + item.event + '</div>' +
+      '<span class="tl-code">' + item.code + '</span></div>';
+    tl.appendChild(row);
+  });
+
+  summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+renderQuestion();
+</script>
+</body>
+</html>
