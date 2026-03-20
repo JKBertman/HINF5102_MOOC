@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scenario Analysis: Information Blocking — Module 4</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:     #f4f3f0;
+  --bg-card:     #ffffff;
+  --bg-surface:  #f0efe9;
+  --bg-dim:      #e8e7e1;
+  --text-1:      #1a1918;
+  --text-2:      #5a5955;
+  --text-3:      #9a9990;
+  --border:      rgba(0,0,0,0.10);
+  --border-md:   rgba(0,0,0,0.18);
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --teal:        #1D9E75;
+  --teal-light:  #E1F5EE;
+  --teal-dark:   #085041;
+  --teal-mid:    #5DCAA5;
+  --red:         #A32D2D;
+  --red-light:   #FCEBEB;
+  --amber:       #BA7517;
+  --amber-light: #FFF8EC;
+  --blue:        #185FA5;
+  --blue-light:  #E6F1FB;
+  --blue-dark:   #0C447C;
+  --font:        system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:     #181816;
+    --bg-card:     #222220;
+    --bg-surface:  #2a2a28;
+    --bg-dim:      #323230;
+    --text-1:      #f0efeb;
+    --text-2:      #a0a098;
+    --text-3:      #666660;
+    --border:      rgba(255,255,255,0.08);
+    --border-md:   rgba(255,255,255,0.15);
+    --teal-light:  #0a3d2b;
+    --red-light:   #3d1010;
+    --amber-light: #2e1f00;
+    --blue-light:  #0c2340;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+}
+#app { max-width: 760px; margin: 0 auto; }
+
+/* ── Header ── */
+.eyebrow {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 6px;
+}
+h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; line-height: 1.3; }
+.header-sub { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 6px; }
+.instruction-box {
+  background: var(--blue-light);
+  border: 0.5px solid rgba(24,95,165,0.25);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px; color: var(--blue-dark); line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+.divider { border: none; border-top: 0.5px solid var(--border); margin: 1.75rem 0; }
+
+/* ── Scenario card ── */
+.scenario-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.scenario-header {
+  padding: 1rem 1.25rem 0.875rem;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.scenario-letter {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+}
+.scenario-letter.a { background: var(--blue-light);   color: var(--blue-dark); }
+.scenario-letter.b { background: var(--amber-light);  color: var(--amber); }
+.scenario-meta { flex: 1; }
+.scenario-label {
+  font-size: 10px; font-weight: 500; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px;
+}
+.scenario-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+
+.scenario-body { padding: 1rem 1.25rem; }
+.scenario-text {
+  font-size: 13.5px; color: var(--text-2); line-height: 1.75;
+  border-left: 3px solid var(--border-md);
+  padding-left: 14px;
+  margin-bottom: 1.25rem;
+  font-style: italic;
+}
+
+/* ── MC question ── */
+.q-label {
+  font-size: 11px; font-weight: 500; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
+}
+.q-text {
+  font-size: 14px; font-weight: 500; color: var(--text-1);
+  margin-bottom: 10px; line-height: 1.5;
+}
+.mc-options { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+.mc-btn {
+  background: var(--bg-surface); border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+  font-size: 13px; color: var(--text-1); cursor: pointer;
+  text-align: left; line-height: 1.45;
+  transition: background 0.12s, border-color 0.12s;
+  display: flex; align-items: baseline; gap: 9px;
+}
+.mc-btn:hover    { background: var(--bg-dim); }
+.mc-btn:disabled { cursor: default; }
+.mc-btn .opt-key { font-weight: 600; font-size: 12px; color: var(--text-3); flex-shrink: 0; min-width: 14px; }
+.mc-btn.correct  { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+.mc-btn.correct .opt-key { color: var(--teal-dark); }
+.mc-btn.wrong    { background: var(--red-light);  border-color: var(--red);  color: var(--red); }
+.mc-btn.wrong .opt-key { color: var(--red); }
+.mc-btn.reveal   { background: var(--teal-light); border-color: var(--teal); color: var(--teal-dark); }
+.mc-btn.reveal .opt-key { color: var(--teal-dark); }
+
+.q-feedback {
+  font-size: 12.5px; line-height: 1.65;
+  display: none; padding: 9px 11px; border-radius: var(--radius-sm);
+  margin-top: 2px;
+}
+.q-feedback.correct { background: var(--teal-light); color: var(--teal-dark); display: block; }
+.q-feedback.wrong   { background: var(--red-light);  color: var(--red);       display: block; }
+
+/* ── Reflection section ── */
+.reflection-wrap {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  display: none;
+  animation: fadeUp 0.35s ease both;
+}
+.reflection-wrap.visible { display: block; }
+
+.reflection-header {
+  padding: 1rem 1.25rem 0.875rem;
+  border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.reflection-badge {
+  background: var(--teal-light); color: var(--teal-dark);
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 20px;
+}
+.reflection-title { font-size: 14px; font-weight: 600; color: var(--text-1); }
+
+.reflection-body { padding: 1rem 1.25rem; }
+.reflection-prompt {
+  font-size: 13.5px; color: var(--text-2); line-height: 1.75;
+  margin-bottom: 1rem;
+}
+.reflection-prompt strong { color: var(--text-1); font-weight: 500; }
+
+.word-count-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.word-count-label { font-size: 12px; color: var(--text-3); }
+.word-count-num {
+  font-size: 12px; font-weight: 500;
+}
+.word-count-num.low    { color: var(--text-3); }
+.word-count-num.mid    { color: var(--amber); }
+.word-count-num.good   { color: var(--teal); }
+
+.reflection-textarea {
+  width: 100%; min-height: 160px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-family: var(--font); font-size: 13.5px;
+  color: var(--text-1); line-height: 1.65;
+  resize: vertical;
+  transition: border-color 0.15s;
+  outline: none;
+}
+.reflection-textarea:focus { border-color: var(--teal); }
+.reflection-textarea::placeholder { color: var(--text-3); }
+
+.submit-btn {
+  margin-top: 10px;
+  background: var(--teal); border: none;
+  border-radius: var(--radius-sm); padding: 9px 20px;
+  font-size: 13px; font-weight: 500; color: #fff;
+  cursor: pointer; transition: background 0.15s;
+}
+.submit-btn:hover    { background: var(--teal-dark); }
+.submit-btn:disabled { background: var(--bg-dim); color: var(--text-3); cursor: default; }
+
+.submitted-box {
+  margin-top: 12px; padding: 10px 13px;
+  background: var(--teal-light); color: var(--teal-dark);
+  border-radius: var(--radius-sm); font-size: 13px; line-height: 1.6;
+  display: none;
+}
+.submitted-box.visible { display: block; animation: fadeUp 0.3s ease both; }
+.submitted-box .sb-title { font-weight: 600; margin-bottom: 4px; }
+
+/* ── Completion banner ── */
+.completion-banner {
+  background: var(--bg-card);
+  border-left: 3px solid var(--teal);
+  border-top: 0.5px solid var(--border);
+  border-right: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1rem 1.25rem;
+  display: none;
+  animation: fadeUp 0.4s ease both;
+}
+.completion-banner.visible { display: block; }
+.cb-label { font-size: 11px; font-weight: 500; color: var(--teal); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+.cb-text  { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="eyebrow">Module 4 · Data Management in Healthcare</div>
+  <h1>Scenario Analysis: Information Blocking</h1>
+  <p class="header-sub">Read each scenario, then answer the multiple-choice question. After both scenarios, you'll write a short reflection.</p>
+  <div class="instruction-box">
+    For each scenario, answer the multiple-choice question. Then write a 200-word reflection addressing: What should the organization do to either comply with the law or maintain its permissible practice? What governance or workflow changes would help?
+  </div>
+
+  <!-- ── Scenario A ── -->
+  <div class="scenario-card" id="card-a">
+    <div class="scenario-header">
+      <div class="scenario-letter a">A</div>
+      <div class="scenario-meta">
+        <div class="scenario-label">Scenario A</div>
+        <div class="scenario-title">Paper Records & the Infeasibility Exception</div>
+      </div>
+    </div>
+    <div class="scenario-body">
+      <div class="scenario-text">
+        A patient asks her primary care provider to send 10 years of medical records to a research study she's enrolled in. The records include paper documents that would need to be scanned. The practice manager says it will take 6 weeks due to the volume and staff capacity. She offers the patient digital records from the past 3 years (already in the EHR) within 2 business days.
+      </div>
+      <div class="q-label">Question</div>
+      <div class="q-text">Does the 6-week timeline for paper records likely constitute information blocking?</div>
+      <div class="mc-options" id="opts-a"></div>
+      <div class="q-feedback" id="fb-a"></div>
+    </div>
+  </div>
+
+  <!-- ── Scenario B ── -->
+  <div class="scenario-card" id="card-b" style="opacity:0.45;pointer-events:none;transition:opacity 0.3s;">
+    <div class="scenario-header">
+      <div class="scenario-letter b">B</div>
+      <div class="scenario-meta">
+        <div class="scenario-label">Scenario B</div>
+        <div class="scenario-title">Vendor Contract & Contractual Information Blocking</div>
+      </div>
+    </div>
+    <div class="scenario-body">
+      <div class="scenario-text">
+        A hospital's EHR vendor sends a contract renewal that includes the following clause: "Customer shall not use any third-party software or APIs to extract data from the System without prior written approval from Vendor." The hospital's CISO is concerned but says the clause is standard.
+      </div>
+      <div class="q-label">Question</div>
+      <div class="q-text">Is this contract clause permissible under the 21st Century Cures Act?</div>
+      <div class="mc-options" id="opts-b"></div>
+      <div class="q-feedback" id="fb-b"></div>
+    </div>
+  </div>
+
+  <!-- ── Reflection ── -->
+  <div class="reflection-wrap" id="reflection">
+    <div class="reflection-header">
+      <span class="reflection-badge">Reflection</span>
+      <span class="reflection-title">Connecting the Scenarios</span>
+    </div>
+    <div class="reflection-body">
+      <p class="reflection-prompt">
+        Based on the two scenarios above, describe <strong>two concrete steps</strong> a health informaticist working at a provider organization should take to identify and address potential information blocking risks — <strong>one related to vendor contracts</strong>, one related to <strong>internal workflows</strong>.
+        <br><br>
+        Aim for approximately 200 words. Consider: What should the organization do to either comply with the law or maintain its permissible practice? What governance or workflow changes would help?
+      </p>
+      <div class="word-count-row">
+        <span class="word-count-label">Word count</span>
+        <span class="word-count-num low" id="word-count">0 / 200</span>
+      </div>
+      <textarea class="reflection-textarea" id="reflection-text"
+        placeholder="Write your reflection here. Address both the vendor contract dimension (Scenario B) and the internal workflow dimension (Scenario A)..."
+        oninput="updateWordCount()"></textarea>
+      <button class="submit-btn" id="submit-btn" onclick="submitReflection()" disabled>Submit reflection</button>
+      <div class="submitted-box" id="submitted-box">
+        <div class="sb-title">Reflection submitted</div>
+        In practice, health informaticists need to audit both their vendor relationships and internal records workflows to surface information blocking risks before they become compliance violations. The two most common failure modes are exactly what you've described: contractual restrictions that limit data access, and operational delays that exceed what the Infeasibility exception permits. Strong governance requires regular contract review cycles and documented workflows with defined turnaround standards.
+      </div>
+      <button class="submit-btn" id="reset-btn" onclick="resetReflection()" style="display:none;margin-top:8px;background:transparent;color:var(--text-2);border:0.5px solid var(--border-md);">Edit response</button>
+    </div>
+  </div>
+
+  <!-- ── Completion ── -->
+  <div class="completion-banner" id="completion">
+    <div class="cb-label">Activity complete</div>
+    <div class="cb-text">You've analyzed two real-world information blocking scenarios and connected them to concrete governance practice. The 21st Century Cures Act and ONC's information blocking rule create obligations at both the vendor contract level and the operational workflow level — health informaticists are the professionals best positioned to identify and close those gaps.</div>
+  </div>
+
+</div>
+<script>
+const QS = {
+  a: {
+    options: [
+      { key: "A", text: "Yes — all records must be delivered immediately upon request" },
+      { key: "B", text: "Not necessarily — paper scanning volume may qualify as infeasible; the practice must respond within 10 business days and provide the digital records promptly" },
+      { key: "C", text: "Yes — the Infeasibility exception never applies to medical record requests" },
+      { key: "D", text: "No — practices have unlimited discretion over record delivery timelines" }
+    ],
+    answer: 1,
+    feedback: "The Infeasibility exception under ONC's information blocking rule can apply when fulfilling a request is genuinely not technically or operationally feasible — large-volume paper scanning may qualify. However, the practice is still required to respond within 10 business days, document the infeasibility, and provide what it can (the EHR records) promptly. Unlimited discretion over timelines (D) is incorrect — the rule sets enforceable standards."
+  },
+  b: {
+    options: [
+      { key: "A", text: "Yes — vendors have the right to protect their systems" },
+      { key: "B", text: "Yes — this falls under the Licensing exception" },
+      { key: "C", text: "No — this is an example of a contractual information blocking clause that is explicitly prohibited" },
+      { key: "D", text: "It depends on what \"prior written approval\" entails" }
+    ],
+    answer: 2,
+    feedback: "The 21st Century Cures Act explicitly prohibits contractual provisions that restrict a customer's ability to access, exchange, or use their own EHI using any technology of their choice, including third-party APIs. This clause — requiring vendor approval before any third-party data extraction — is a textbook contractual information blocking practice. The Licensing exception (B) does not permit restrictions on customer access to their own data. The CISO's instinct to flag this clause was correct."
+  }
+};
+
+let answered = { a: false, b: false };
+let reflectionSubmitted = false;
+
+function buildOptions(id) {
+  const q = QS[id];
+  const wrap = document.getElementById('opts-' + id);
+  wrap.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'mc-btn';
+    btn.innerHTML = '<span class="opt-key">' + opt.key + '</span><span>' + opt.text + '</span>';
+    if (!answered[id]) {
+      btn.onclick = () => answer(id, i);
+    }
+    wrap.appendChild(btn);
+  });
+}
+
+function answer(id, chosen) {
+  if (answered[id]) return;
+  answered[id] = true;
+
+  const q = QS[id];
+  const opts = document.getElementById('opts-' + id).querySelectorAll('.mc-btn');
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.answer) btn.classList.add('correct');
+    else if (i === chosen && chosen !== q.answer) btn.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('fb-' + id);
+  fb.className = 'q-feedback ' + (chosen === q.answer ? 'correct' : 'wrong');
+  fb.textContent = q.feedback;
+
+  if (id === 'a') {
+    // unlock Scenario B
+    setTimeout(() => {
+      const cardB = document.getElementById('card-b');
+      cardB.style.opacity = '1';
+      cardB.style.pointerEvents = 'auto';
+      buildOptions('b');
+      cardB.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 600);
+  }
+
+  if (id === 'b') {
+    // unlock reflection
+    setTimeout(() => {
+      const ref = document.getElementById('reflection');
+      ref.classList.add('visible');
+      ref.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 600);
+  }
+}
+
+function updateWordCount() {
+  const text = document.getElementById('reflection-text').value.trim();
+  const words = text === '' ? 0 : text.split(/\s+/).length;
+  const el = document.getElementById('word-count');
+  el.textContent = words + ' / 200';
+  el.className = 'word-count-num ' + (words < 100 ? 'low' : words < 180 ? 'mid' : 'good');
+  document.getElementById('submit-btn').disabled = words < 50;
+}
+
+function submitReflection() {
+  if (reflectionSubmitted) return;
+  reflectionSubmitted = true;
+  document.getElementById('submitted-box').classList.add('visible');
+  document.getElementById('submit-btn').style.display = 'none';
+  document.getElementById('reset-btn').style.display = 'inline-block';
+  document.getElementById('reflection-text').disabled = true;
+
+  setTimeout(() => {
+    const banner = document.getElementById('completion');
+    banner.classList.add('visible');
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 500);
+}
+
+function resetReflection() {
+  reflectionSubmitted = false;
+  document.getElementById('reflection-text').disabled = false;
+  document.getElementById('reflection-text').value = '';
+  document.getElementById('submitted-box').classList.remove('visible');
+  document.getElementById('submit-btn').style.display = 'inline-block';
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('reset-btn').style.display = 'none';
+  document.getElementById('word-count').textContent = '0 / 200';
+  document.getElementById('word-count').className = 'word-count-num low';
+  document.getElementById('completion').classList.remove('visible');
+}
+
+// Build Scenario A on load; B is locked until A is answered
+buildOptions('a');
+</script>
+</body>
+</html>
