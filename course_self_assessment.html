@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Self-Assessment — Data Management in Healthcare</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:     #f4f3f0;
+  --bg-card:     #ffffff;
+  --bg-surface:  #f0efe9;
+  --bg-dim:      #e8e7e1;
+  --text-1:      #1a1918;
+  --text-2:      #5a5955;
+  --text-3:      #9a9990;
+  --border:      rgba(0,0,0,0.10);
+  --border-md:   rgba(0,0,0,0.18);
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --teal:        #1D9E75;
+  --teal-light:  #E1F5EE;
+  --teal-dark:   #085041;
+  --teal-mid:    #5DCAA5;
+  --amber:       #BA7517;
+  --amber-light: #FFF8EC;
+  --amber-mid:   #EF9F27;
+  --red:         #A32D2D;
+  --red-light:   #FCEBEB;
+  --blue:        #185FA5;
+  --blue-light:  #E6F1FB;
+  --blue-dark:   #0C447C;
+  --purple:      #534AB7;
+  --purple-light:#EEEDFE;
+  --coral:       #993C1D;
+  --coral-light: #FAECE7;
+  --font:        system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:     #181816;
+    --bg-card:     #222220;
+    --bg-surface:  #2a2a28;
+    --bg-dim:      #323230;
+    --text-1:      #f0efeb;
+    --text-2:      #a0a098;
+    --text-3:      #666660;
+    --border:      rgba(255,255,255,0.08);
+    --border-md:   rgba(255,255,255,0.15);
+    --teal-light:  #0a3d2b;
+    --amber-light: #2e1f00;
+    --red-light:   #3d1010;
+    --blue-light:  #0c2340;
+    --purple-light:#1a1840;
+    --coral-light: #2e1008;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+}
+#app { max-width: 780px; margin: 0 auto; }
+
+.course-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--teal-light); color: var(--teal-dark);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; padding: 4px 10px; border-radius: 20px;
+  margin-bottom: 1rem;
+}
+.course-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+h1 { font-size: 22px; font-weight: 700; color: var(--text-1); line-height: 1.25; margin-bottom: 8px; }
+.intro-sub { font-size: 14px; color: var(--text-2); line-height: 1.7; margin-bottom: 0.5rem; }
+.intro-instruction {
+  font-size: 13px; color: var(--text-3); line-height: 1.6;
+  margin-bottom: 2rem; padding: 10px 14px;
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.intro-instruction strong { color: var(--text-2); font-weight: 500; }
+
+.progress-strip {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+  margin-bottom: 2rem; position: sticky; top: 12px; z-index: 10;
+}
+.progress-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.progress-title { font-size: 12px; font-weight: 500; color: var(--text-2); }
+.progress-count { font-size: 12px; color: var(--text-3); }
+.progress-track { height: 5px; background: var(--bg-dim); border-radius: 3px; overflow: hidden; }
+.progress-fill {
+  height: 100%; background: var(--teal); border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+.legend-row { display: flex; gap: 16px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+
+.module-section { margin-bottom: 2.25rem; }
+.module-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+.module-pip { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.m1 .module-pip { background: var(--blue); }
+.m2 .module-pip { background: var(--teal); }
+.m3 .module-pip { background: var(--purple); }
+.m4 .module-pip { background: var(--coral); }
+.module-tag {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 20px;
+}
+.m1 .module-tag { background: var(--blue-light);   color: var(--blue-dark); }
+.m2 .module-tag { background: var(--teal-light);   color: var(--teal-dark); }
+.m3 .module-tag { background: var(--purple-light); color: var(--purple); }
+.m4 .module-tag { background: var(--coral-light);  color: var(--coral); }
+.module-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
+
+.concept-row {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-md); margin-bottom: 8px;
+  overflow: hidden; transition: border-color 0.2s;
+}
+.concept-row.rated { border-color: var(--border-md); }
+.concept-top { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.concept-text { flex: 1; font-size: 13.5px; color: var(--text-1); line-height: 1.45; }
+
+.rating-group { display: flex; gap: 4px; flex-shrink: 0; }
+.rating-btn {
+  width: 34px; height: 34px; border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-md); background: var(--bg-surface);
+  font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, border-color 0.12s, transform 0.1s; flex-shrink: 0;
+}
+.rating-btn:hover { transform: scale(1.12); background: var(--bg-dim); }
+.rating-btn.selected-1 { background: var(--red-light);   border-color: var(--red);   }
+.rating-btn.selected-2 { background: var(--amber-light); border-color: var(--amber); }
+.rating-btn.selected-3 { background: var(--teal-light);  border-color: var(--teal);  }
+
+/* Summary */
+.summary-panel {
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  margin-bottom: 2rem; display: none; animation: fadeUp 0.4s ease both;
+}
+.summary-panel.visible { display: block; }
+.summary-header {
+  padding: 1rem 1.25rem; border-bottom: 0.5px solid var(--border);
+  background: var(--teal-light);
+}
+.summary-header-title { font-size: 15px; font-weight: 600; color: var(--teal-dark); margin-bottom: 2px; }
+.summary-header-sub { font-size: 12px; color: var(--teal); }
+.summary-body { padding: 1.25rem; }
+
+.summary-modules { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+@media (max-width: 500px) { .summary-modules { grid-template-columns: 1fr; } }
+.summary-module { border-radius: var(--radius-md); border: 0.5px solid var(--border); padding: 0.875rem 1rem; }
+.sm-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+.sm1 .sm-label { color: var(--blue); }
+.sm2 .sm-label { color: var(--teal); }
+.sm3 .sm-label { color: var(--purple); }
+.sm4 .sm-label { color: var(--coral); }
+.sm-title { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; }
+.sm-bar-wrap { height: 6px; background: var(--bg-dim); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.sm-bar { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.sm1 .sm-bar { background: var(--blue); }
+.sm2 .sm-bar { background: var(--teal); }
+.sm3 .sm-bar { background: var(--purple); }
+.sm4 .sm-bar { background: var(--coral); }
+.sm-score { font-size: 11px; color: var(--text-3); }
+
+.summary-strong {
+  background: var(--teal-light); border-radius: var(--radius-md);
+  padding: 0.875rem 1rem; margin-bottom: 12px;
+}
+.summary-strong-label { font-size: 11px; font-weight: 600; color: var(--teal); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+.strong-item { font-size: 13px; color: var(--teal-dark); line-height: 1.6; display: flex; align-items: baseline; gap: 7px; margin-bottom: 4px; }
+.strong-item:last-child { margin-bottom: 0; }
+.strong-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal-mid); flex-shrink: 0; margin-top: 7px; }
+
+.summary-revisit {
+  border-radius: var(--radius-md); overflow: hidden;
+  border: 0.5px solid rgba(186,117,23,0.3);
+}
+.revisit-header {
+  background: var(--amber-light); padding: 0.875rem 1rem;
+  border-bottom: 0.5px solid rgba(186,117,23,0.15);
+}
+.revisit-header-title { font-size: 11px; font-weight: 600; color: var(--amber); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+.revisit-header-sub { font-size: 12px; color: var(--amber); opacity: 0.85; line-height: 1.5; }
+
+.revisit-item {
+  padding: 0.875rem 1rem;
+  border-bottom: 0.5px solid var(--border);
+  animation: fadeUp 0.25s ease both;
+  background: var(--bg-card);
+}
+.revisit-item:last-child { border-bottom: none; }
+.revisit-concept { font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 7px; line-height: 1.4; }
+.revisit-where {
+  font-size: 12.5px; color: var(--text-2); line-height: 1.65;
+  padding: 8px 11px; background: var(--bg-surface);
+  border-radius: var(--radius-sm); border-left: 2px solid var(--amber-mid);
+}
+.where-label {
+  font-weight: 600; color: var(--amber); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: block; margin-bottom: 3px;
+}
+
+.empty-note { font-size: 13px; color: var(--text-3); font-style: italic; }
+
+.closing-card {
+  background: var(--bg-card);
+  border-left: 3px solid var(--teal);
+  border-top: 0.5px solid var(--border);
+  border-right: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 1.125rem 1.25rem; display: none;
+}
+.closing-card.visible { display: block; animation: fadeUp 0.4s ease both; }
+.closing-label { font-size: 11px; font-weight: 500; color: var(--teal); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 7px; }
+.closing-text { font-size: 13.5px; color: var(--text-2); line-height: 1.75; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="course-badge"><span class="dot"></span>Course Complete</div>
+  <h1>Data Management in Healthcare</h1>
+  <p class="intro-sub">Congratulations on completing the course. Take a few minutes to check in with yourself about what landed — and what you might want to revisit.</p>
+  <div class="intro-instruction">
+    <strong>How this works:</strong> Rate your confidence on each concept using the three buttons. When you've rated all 20, your personalized summary appears — including specific guidance on where to go back in the course for anything you're still working on.
+  </div>
+
+  <div class="progress-strip">
+    <div class="progress-top">
+      <span class="progress-title">Concepts rated</span>
+      <span class="progress-count" id="prog-count">0 of 20</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="legend-row">
+    <div class="legend-item"><span style="font-size:16px;">😕</span> Still working on it</div>
+    <div class="legend-item"><span style="font-size:16px;">🤔</span> Getting there</div>
+    <div class="legend-item"><span style="font-size:16px;">✅</span> Solid</div>
+  </div>
+
+  <div id="concepts-wrap"></div>
+
+  <div class="summary-panel" id="summary">
+    <div class="summary-header">
+      <div class="summary-header-title">Your self-assessment snapshot</div>
+      <div class="summary-header-sub">Based on your confidence ratings across 20 concepts</div>
+    </div>
+    <div class="summary-body">
+      <div class="summary-modules" id="summary-modules"></div>
+      <div class="summary-strong">
+        <div class="summary-strong-label">Solid ground</div>
+        <div id="strong-items"></div>
+      </div>
+      <div class="summary-revisit" id="summary-revisit" style="display:none;margin-top:12px;">
+        <div class="revisit-header">
+          <div class="revisit-header-title">Worth revisiting</div>
+          <div class="revisit-header-sub">Here's exactly where to go back in the course for each concept you flagged.</div>
+        </div>
+        <div id="revisit-items"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="closing-card" id="closing">
+    <div class="closing-label">Well done</div>
+    <div class="closing-text" id="closing-text"></div>
+  </div>
+
+</div>
+<script>
+const MODULES = [
+  {
+    id: 'm1', tag: 'Module 1', title: 'Healthcare Data Foundations',
+    concepts: [
+      {
+        text: "What makes healthcare data unique compared to other industries",
+        where: "Module 1, Lesson 1 — Introduction to Healthcare Data. Revisit the section on data sensitivity, fragmentation across care settings, and the clinical vs. administrative data distinction."
+      },
+      {
+        text: "Classifying data by structure: structured, unstructured, and semi-structured",
+        where: "Module 1, Lesson 2 — Data Classification. Review the three structure types and the examples — lab results (structured), clinical notes (unstructured), and HL7 messages (semi-structured)."
+      },
+      {
+        text: "The six data quality dimensions: accuracy, completeness, consistency, timeliness, validity, reliability",
+        where: "Module 1, Lesson 3 — Data Quality. Review each dimension and return to Activity E1 (What Broke?) to see all six illustrated in a single clinical scenario."
+      },
+      {
+        text: "Master Patient Index (MPI) and patient matching challenges",
+        where: "Module 1, Lesson 4 — Patient Identification. Revisit the MPI section and the discussion of duplicate records, probabilistic vs. deterministic matching, and enterprise MPI."
+      },
+      {
+        text: "Core principles of data governance in healthcare",
+        where: "Module 1, Lesson 5 — Data Governance. Review the stewardship roles, governance committee structures, and the distinction between data policy and data workflow."
+      }
+    ]
+  },
+  {
+    id: 'm2', tag: 'Module 2', title: 'Provider Information Systems',
+    concepts: [
+      {
+        text: "Differences between EMR, EHR, and PHR",
+        where: "Module 2, Lesson 1 — Health Record Systems. Revisit the EMR/EHR/PHR comparison. Focus on interoperability scope (who can access the record) and who controls each record type."
+      },
+      {
+        text: "Hospital system categories: clinical, administrative, analytics, infrastructure",
+        where: "Module 2, Lesson 2 — Hospital Information Systems. Review the four categories and key examples: LIS, RIS, CDSS (clinical); PAS, billing (administrative); data warehouse (analytics); interface engine (infrastructure)."
+      },
+      {
+        text: "Clinical workflows from registration through discharge",
+        where: "Module 2, Lesson 3 — Clinical Workflows. Walk through the ADT cycle again and trace how each step (admit, transfer, discharge) generates messages that flow to downstream systems."
+      },
+      {
+        text: "System architecture trade-offs: enterprise vs. best-of-breed vs. hybrid",
+        where: "Module 2, Lesson 4 — System Architecture. Revisit the architecture spectrum and return to Activity E5 (Architecture Trade-Off Slider) to see how the six metrics shift across the five positions."
+      },
+      {
+        text: "Interface count and integration cost implications of architecture choices",
+        where: "Module 2, Lesson 4 — System Architecture. Return to the interface count data in Activity E5: a full best-of-breed environment with 50 systems generates ~1,225 interfaces. Revisit why the number grows with n×(n-1)/2 logic."
+      }
+    ]
+  },
+  {
+    id: 'm3', tag: 'Module 3', title: 'Integration and Standards',
+    concepts: [
+      {
+        text: "Point-to-point vs. hub-and-spoke integration architecture",
+        where: "Module 3, Lesson 1 — Integration Architecture. Revisit the diagrams comparing both models. Focus on why point-to-point complexity scales quadratically, and what the hub-and-spoke model trades in flexibility for manageability."
+      },
+      {
+        text: "Interface engine functions and the role of a clearinghouse",
+        where: "Module 3, Lesson 2 — Interface Engines. Review the core functions: message translation, routing, transformation, and monitoring. Then read how a clearinghouse extends these functions in the payer context."
+      },
+      {
+        text: "HL7 v2 message structure and key transaction types (ADT, ORM, ORU)",
+        where: "Module 3, Lesson 3 — HL7 v2. Return to Activity E2A (Segment Identification) to relearn what MSH, PID, PV1, ORC, and OBR mean, then do Activity E2B (Field Decoder) to practice reading actual field values."
+      },
+      {
+        text: "FHIR APIs and how they differ from HL7 v2",
+        where: "Module 3, Lesson 4 — FHIR. Revisit the REST-based vs. batch messaging distinction, the FHIR resource model, and why FHIR enables app-layer integration in ways HL7 v2 cannot."
+      },
+      {
+        text: "Clinical terminologies: LOINC, SNOMED CT, and RxNorm — what each codes",
+        where: "Module 3, Lesson 5 — Clinical Terminologies. Review the three-way comparison: LOINC codes observations and lab tests, SNOMED CT codes clinical concepts and findings, RxNorm codes medications and drug interactions. Revisit why consistent code systems are essential for interoperability."
+      }
+    ]
+  },
+  {
+    id: 'm4', tag: 'Module 4', title: 'Provider–Payer Integration & Patient Access',
+    concepts: [
+      {
+        text: "X12 EDI transaction set: 270/271, 278, 837, 835 — purpose of each",
+        where: "Module 4, Lesson 1 — X12 Transactions. Review the transaction pair logic: 270 asks / 271 responds (eligibility); 278 requests / 278 responds (prior auth); 837 submits a claim / 835 remits payment. Return to Activity E6A (Transaction Sorter) to re-test yourself on pre- vs. post-service."
+      },
+      {
+        text: "The complete administrative lifecycle from eligibility check through remittance",
+        where: "Module 4, Lesson 1 — X12 Transactions. Revisit Activity E6B (Chronological Sequence) and study the 8-step timeline at the end. Trace each step to its transaction code and ask: what happens if this step is skipped or delayed?"
+      },
+      {
+        text: "Clearinghouse operations and value-added services",
+        where: "Module 4, Lesson 2 — Clearinghouses. Review the core functions (translation, validation, routing) and the value-added services — eligibility on-demand, claim scrubbing, denial analytics — that differentiate clearinghouse vendors."
+      },
+      {
+        text: "Information Blocking regulations, exceptions, and penalties under 21st Century Cures",
+        where: "Module 4, Lesson 3 — Information Blocking. Revisit the eight exceptions (especially Infeasibility and Licensing) and return to the Scenario Analysis activity. Pay close attention to what makes a practice permissible vs. prohibited."
+      },
+      {
+        text: "SMART on FHIR and Patient Access APIs",
+        where: "Module 4, Lesson 4 — Patient Access. Review the SMART authorization flow (OAuth2 + FHIR), the CMS Patient Access API rule, and why this combination lets third-party apps access patient data without sharing credentials."
+      }
+    ]
+  }
+];
+
+const ratings = MODULES.map(m => m.concepts.map(() => null));
+const TOTAL = MODULES.reduce((s, m) => s + m.concepts.length, 0);
+
+function getRated() { return ratings.flat().filter(r => r !== null).length; }
+
+function updateProgress() {
+  const rated = getRated();
+  document.getElementById('prog-count').textContent = rated + ' of ' + TOTAL;
+  document.getElementById('prog-fill').style.width = Math.round((rated / TOTAL) * 100) + '%';
+  if (rated === TOTAL) {
+    setTimeout(() => {
+      showSummary();
+      document.getElementById('summary').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 400);
+  }
+}
+
+function buildConcepts() {
+  const wrap = document.getElementById('concepts-wrap');
+  MODULES.forEach((mod, mi) => {
+    const section = document.createElement('div');
+    section.className = 'module-section ' + mod.id;
+    section.innerHTML =
+      '<div class="module-header">' +
+        '<div class="module-pip"></div>' +
+        '<span class="module-tag">' + mod.tag + '</span>' +
+        '<span class="module-title">' + mod.title + '</span>' +
+      '</div>';
+
+    mod.concepts.forEach((concept, ci) => {
+      const row = document.createElement('div');
+      row.className = 'concept-row';
+      row.id = 'row-' + mi + '-' + ci;
+
+      const top = document.createElement('div');
+      top.className = 'concept-top';
+      top.innerHTML = '<div class="concept-text">' + concept.text + '</div>';
+
+      const group = document.createElement('div');
+      group.className = 'rating-group';
+      ['😕','🤔','✅'].forEach((emoji, ri) => {
+        const btn = document.createElement('button');
+        btn.className = 'rating-btn';
+        btn.setAttribute('aria-label', ['Still working on it','Getting there','Solid'][ri]);
+        btn.textContent = emoji;
+        btn.id = 'rbtn-' + mi + '-' + ci + '-' + ri;
+        btn.onclick = () => rate(mi, ci, ri + 1);
+        group.appendChild(btn);
+      });
+
+      top.appendChild(group);
+      row.appendChild(top);
+      section.appendChild(row);
+    });
+
+    wrap.appendChild(section);
+  });
+}
+
+function rate(mi, ci, level) {
+  const wasNull = ratings[mi][ci] === null;
+  ratings[mi][ci] = level;
+  for (let ri = 0; ri < 3; ri++) {
+    const btn = document.getElementById('rbtn-' + mi + '-' + ci + '-' + ri);
+    btn.className = 'rating-btn' + (ri + 1 === level ? ' selected-' + level : '');
+  }
+  document.getElementById('row-' + mi + '-' + ci).classList.add('rated');
+  if (wasNull) updateProgress();
+}
+
+function showSummary() {
+  document.getElementById('summary').classList.add('visible');
+
+  // Module confidence bars
+  const modWrap = document.getElementById('summary-modules');
+  const modMeta = [
+    { label: 'Module 1', title: 'Data Foundations',  cls: 'sm1' },
+    { label: 'Module 2', title: 'Provider Systems',  cls: 'sm2' },
+    { label: 'Module 3', title: 'Integration',       cls: 'sm3' },
+    { label: 'Module 4', title: 'Provider–Payer',    cls: 'sm4' }
+  ];
+  MODULES.forEach((mod, mi) => {
+    const scores = ratings[mi].filter(r => r !== null);
+    const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const pct = Math.round((avg / 3) * 100);
+    const m = modMeta[mi];
+    const card = document.createElement('div');
+    card.className = 'summary-module ' + m.cls;
+    card.innerHTML =
+      '<div class="sm-label">' + m.label + '</div>' +
+      '<div class="sm-title">' + m.title + '</div>' +
+      '<div class="sm-bar-wrap"><div class="sm-bar" id="smbar-' + mi + '" style="width:0%"></div></div>' +
+      '<div class="sm-score">' + (scores.length ? pct + '% confidence' : 'Not rated') + '</div>';
+    modWrap.appendChild(card);
+    setTimeout(() => {
+      document.getElementById('smbar-' + mi).style.width = pct + '%';
+    }, 100 + mi * 80);
+  });
+
+  // Solid items
+  const strongEl = document.getElementById('strong-items');
+  let hasStrong = false;
+  MODULES.forEach((mod, mi) => {
+    mod.concepts.forEach((concept, ci) => {
+      if (ratings[mi][ci] === 3) {
+        hasStrong = true;
+        const item = document.createElement('div');
+        item.className = 'strong-item';
+        item.innerHTML = '<div class="strong-dot"></div><span>' + concept.text + '</span>';
+        strongEl.appendChild(item);
+      }
+    });
+  });
+  if (!hasStrong) {
+    strongEl.innerHTML = '<span class="empty-note">Keep rating — mark concepts solid as your confidence grows.</span>';
+  }
+
+  // Revisit items with course pointers
+  const revisitWrap = document.getElementById('summary-revisit');
+  const revisitEl   = document.getElementById('revisit-items');
+  let hasRevisit = false;
+  MODULES.forEach((mod, mi) => {
+    mod.concepts.forEach((concept, ci) => {
+      if (ratings[mi][ci] === 1) {
+        hasRevisit = true;
+        const item = document.createElement('div');
+        item.className = 'revisit-item';
+        item.innerHTML =
+          '<div class="revisit-concept">' + concept.text + '</div>' +
+          '<div class="revisit-where">' +
+            '<span class="where-label">Where to go back</span>' +
+            concept.where +
+          '</div>';
+        revisitEl.appendChild(item);
+      }
+    });
+  });
+  revisitWrap.style.display = hasRevisit ? 'block' : 'none';
+
+  // Closing message
+  const solid      = ratings.flat().filter(r => r === 3).length;
+  const struggling = ratings.flat().filter(r => r === 1).length;
+  let msg = '';
+  if (solid >= 15) {
+    msg = "You've marked most concepts as solid — that's a strong foundation for graduate-level work in health informatics. These concepts form the scaffolding for every system implementation, integration project, and compliance challenge you'll encounter in practice. Good luck with what comes next.";
+  } else if (struggling > 8) {
+    msg = "It takes real self-awareness to honestly flag what needs more work. Use the revisit guide above as your study plan — the concepts you've flagged come up constantly in real implementations. Spending focused time with the relevant lessons and activities will cement them before you move forward.";
+  } else if (struggling > 0) {
+    msg = "You're in solid shape across most of the course. The concepts flagged above are worth a focused review — the revisit suggestions will get you to exactly the right place in the material quickly. Integration standards, data quality, and the provider–payer lifecycle are the ones that compound the most in practice.";
+  } else {
+    msg = "Strong work — you're feeling confident across the board. These concepts are highly interconnected, so that confidence will compound as you apply them. Take what you've built here and use it.";
+  }
+  document.getElementById('closing-text').textContent = msg;
+  document.getElementById('closing').classList.add('visible');
+}
+
+buildConcepts();
+</script>
+</body>
+</html>
