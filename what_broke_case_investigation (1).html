@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Broke? — A Preventable Readmission</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f5f3;
+    --color-background-tertiary: #eeeeeb;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #666660;
+    --color-text-tertiary: #999993;
+    --color-border-tertiary: rgba(0,0,0,0.12);
+    --color-border-secondary: rgba(0,0,0,0.22);
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --font-sans: system-ui, -apple-system, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2a2a28;
+      --color-background-tertiary: #333331;
+      --color-text-primary: #f0f0ed;
+      --color-text-secondary: #a0a09a;
+      --color-text-tertiary: #707068;
+      --color-border-tertiary: rgba(255,255,255,0.10);
+      --color-border-secondary: rgba(255,255,255,0.18);
+    }
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-background-tertiary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  #app {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .header-block {
+    border-left: 3px solid #1D9E75;
+    padding: 0.875rem 1rem;
+    margin-bottom: 1.5rem;
+    background: var(--color-background-secondary);
+    border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
+  }
+  .header-block .label {
+    font-size: 11px; font-weight: 500; color: #0F6E56;
+    letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 4px;
+  }
+  .header-block .title {
+    font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px;
+  }
+  .header-block .subtitle {
+    font-size: 13px; color: var(--color-text-secondary); line-height: 1.6;
+  }
+
+  .phase-label {
+    font-size: 11px; font-weight: 500; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.75rem;
+  }
+
+  .clue-feed { margin-bottom: 1.25rem; }
+
+  .clue-item {
+    display: flex; gap: 12px; margin-bottom: 10px;
+    animation: fadeUp 0.35s ease both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .clue-dot {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; margin-top: 2px;
+  }
+  .clue-dot.active { background: #E1F5EE; color: #085041; }
+  .clue-dot.dim    { background: var(--color-background-secondary); color: var(--color-text-tertiary); }
+
+  .clue-bubble {
+    flex: 1; background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md); padding: 10px 14px;
+    font-size: 14px; color: var(--color-text-primary); line-height: 1.6;
+  }
+  .clue-bubble .clue-tag {
+    font-size: 11px; font-weight: 500; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+  }
+
+  .reveal-btn {
+    background: transparent; border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md); padding: 9px 16px;
+    font-size: 13px; color: var(--color-text-primary); cursor: pointer;
+    transition: background 0.15s; margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .reveal-btn:hover { background: var(--color-background-secondary); }
+
+  .classify-panel {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg); padding: 1.25rem;
+    margin-top: 0.5rem; display: none;
+    animation: fadeUp 0.3s ease both;
+  }
+  .classify-panel .q {
+    font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.875rem;
+  }
+
+  .dim-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px;
+  }
+  .dim-btn {
+    background: var(--color-background-secondary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md); padding: 9px 11px;
+    font-size: 13px; color: var(--color-text-primary); cursor: pointer;
+    text-align: left; line-height: 1.4; transition: background 0.12s, border-color 0.12s;
+  }
+  .dim-btn:hover { background: var(--color-background-tertiary); }
+  .dim-btn:disabled { cursor: default; }
+  .dim-btn strong { display: block; font-weight: 500; margin-bottom: 2px; }
+  .dim-btn span   { font-size: 11px; color: var(--color-text-secondary); }
+
+  .dim-btn.correct    { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
+  .dim-btn.correct span { color: #0F6E56; }
+  .dim-btn.wrong      { background: #FCEBEB; border-color: #E24B4A; color: #501313; }
+  .dim-btn.reveal-ans { background: #E1F5EE; border-color: #0F6E56; color: #085041; }
+  .dim-btn.reveal-ans span { color: #0F6E56; }
+
+  .feedback-box {
+    margin-top: 1rem; padding: 0.875rem 1rem;
+    border-radius: var(--border-radius-md); font-size: 13px; line-height: 1.6; display: none;
+  }
+  .feedback-box.correct { background: #E1F5EE; border: 0.5px solid #5DCAA5; color: #085041; }
+  .feedback-box.wrong   { background: #FCEBEB; border: 0.5px solid #F09595; color: #501313; }
+  .fb-title { font-weight: 500; margin-bottom: 3px; }
+
+  .continue-btn {
+    margin-top: 1rem; background: #1D9E75; border: none;
+    border-radius: var(--border-radius-md); padding: 10px 20px;
+    font-size: 13px; font-weight: 500; color: #fff; cursor: pointer;
+    transition: background 0.15s; display: none;
+  }
+  .continue-btn:hover { background: #0F6E56; }
+
+  .verdict-panel {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg); padding: 1.5rem;
+    display: none; animation: fadeUp 0.3s ease both;
+  }
+  .verdict-panel h2 {
+    font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.25rem;
+  }
+  .verdict-panel .sub {
+    font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1rem;
+  }
+  .verdict-score {
+    font-size: 36px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.25rem;
+  }
+  .verdict-rows { margin: 1rem 0; }
+  .v-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary);
+    font-size: 13px; line-height: 1.5;
+  }
+  .v-row:last-child { border-bottom: none; }
+  .v-icon { flex-shrink: 0; margin-top: 1px; }
+  .v-dim  { font-weight: 500; margin-right: 4px; }
+
+  .restart-btn {
+    background: transparent; border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md); padding: 9px 20px;
+    font-size: 13px; color: var(--color-text-primary); cursor: pointer;
+    transition: background 0.15s; margin-top: 0.5rem;
+  }
+  .restart-btn:hover { background: var(--color-background-primary); }
+
+  .progress-pip-row { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+  .pip {
+    height: 4px; flex: 1; border-radius: 2px;
+    background: var(--color-border-tertiary); transition: background 0.3s;
+  }
+  .pip.done       { background: #1D9E75; }
+  .pip.active-pip { background: #9FE1CB; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header-block">
+    <div class="label">Case investigation</div>
+    <div class="title">What broke? — A preventable readmission</div>
+    <div class="subtitle">A 71-year-old patient with heart failure was readmitted 5 days after discharge. Six data quality failures contributed. Uncover each clue, then identify the dimension it represents.</div>
+  </div>
+
+  <div class="progress-pip-row" id="pip-row"></div>
+  <div id="main-area"></div>
+  <div class="verdict-panel" id="verdict"></div>
+</div>
+
+<script>
+const CASES = [
+  {
+    num: 1,
+    tag: "Interface & unit conversion",
+    clue: "The patient's weight — 218 lbs — was recorded in the ED system. But when the cardiology flowsheet pulled the value through the interface, it appeared as 99 kg. The same patient, the same measurement — two different numbers in two different systems.",
+    answer: "Consistency",
+    rationale: "The same measurement holds different values across two systems because of an interface unit-conversion error. When data doesn't agree with itself across contexts, that's a consistency failure."
+  },
+  {
+    num: 2,
+    tag: "Discharge handoff",
+    clue: "At discharge, the care team increased the patient's diuretic dose — a critical change given her fluid overload. But the updated medication list was never transmitted to the home health agency. For 5 days, the home health nurse administered the original, lower dose.",
+    answer: "Completeness",
+    rationale: "The updated information existed in the hospital system but was never included in the transmitted record. A required data element — the current medication dose — was absent where it was needed most."
+  },
+  {
+    num: 3,
+    tag: "Lab result delivery",
+    clue: "At 11:42 p.m., the lab processed a potassium result of 2.9 mEq/L — dangerously low. But because the interface ran on a nightly batch schedule, the result didn't appear in the EHR until the next morning. The critical window for intervention had already passed.",
+    answer: "Timeliness",
+    rationale: "The data existed and was accurate — but it wasn't available when the clinical decision needed to be made. A batch-processing delay transformed an urgent result into a missed opportunity."
+  },
+  {
+    num: 4,
+    tag: "Discharge documentation",
+    clue: "For a heart failure patient, daily weight is the most important indicator of fluid retention. The discharge weight — the baseline everything else would be measured against — was never recorded. The field in the EHR was simply left blank.",
+    answer: "Completeness",
+    rationale: "A required data element was missing entirely. Without a discharge baseline weight, the care team had no reference point to detect dangerous fluid accumulation — a classic completeness failure."
+  },
+  {
+    num: 5,
+    tag: "Data entry & validation",
+    clue: "A blood pressure of 210/115 was entered into the EHR as 21/115 — a missing digit. No validation rule flagged the value. It was saved, visible in the chart, and never corrected.",
+    answer: "Validity",
+    rationale: "A systolic BP of 21 is physiologically impossible. A proper validation rule — checking that values fall within an allowable range — should have caught this before it was committed to the record."
+  },
+  {
+    num: 6,
+    tag: "Weight monitoring protocol",
+    clue: "Three different nurses weighed the patient on three different floors during her stay — using three different scales, with no standardized protocol. Readings varied by up to 6 lbs on the same day. The trend line the team was watching was meaningless.",
+    answer: "Reliability",
+    rationale: "When the data collection process itself is inconsistent — different equipment, different collectors, no standard procedure — results can't be trusted even if each individual reading was recorded accurately. That's a reliability failure."
+  }
+];
+
+const DIMS = [
+  { name: "Accuracy",     def: "data doesn't correctly represent reality" },
+  { name: "Completeness", def: "required data elements are missing" },
+  { name: "Consistency",  def: "same data element differs across systems" },
+  { name: "Timeliness",   def: "data unavailable when decisions are needed" },
+  { name: "Validity",     def: "data outside defined formats or allowable ranges" },
+  { name: "Reliability",  def: "collection process yields inconsistent results" }
+];
+
+let revealed = 0, classified = 0, score = 0;
+let answers = new Array(CASES.length).fill(null);
+
+function buildPips() {
+  const row = document.getElementById('pip-row');
+  row.innerHTML = '';
+  CASES.forEach((_, i) => {
+    const pip = document.createElement('div');
+    pip.className = 'pip' + (i < classified ? ' done' : (i === classified && revealed > 0 ? ' active-pip' : ''));
+    pip.id = 'pip-' + i;
+    row.appendChild(pip);
+  });
+}
+
+function updatePips() {
+  CASES.forEach((_, i) => {
+    const pip = document.getElementById('pip-' + i);
+    if (!pip) return;
+    pip.className = 'pip' + (i < classified ? ' done' : (i === classified && revealed > 0 ? ' active-pip' : ''));
+  });
+}
+
+function renderMain() {
+  const area = document.getElementById('main-area');
+  area.innerHTML = '';
+  if (classified >= CASES.length) { showVerdict(); return; }
+
+  const c = CASES[classified];
+
+  const phaseEl = document.createElement('div');
+  phaseEl.className = 'phase-label';
+  phaseEl.textContent = 'Clue ' + (classified + 1) + ' of ' + CASES.length;
+  area.appendChild(phaseEl);
+
+  const feed = document.createElement('div');
+  feed.className = 'clue-feed';
+
+  if (revealed === 0) {
+    feed.appendChild(makeClue('?', 'Clue ' + (classified + 1), "Something went wrong during this patient's care. Click \"Reveal clue\" to uncover what happened.", true));
+  } else {
+    feed.appendChild(makeClue(classified + 1, c.tag, c.clue, true));
+  }
+  area.appendChild(feed);
+
+  if (revealed === 0) {
+    const btn = document.createElement('button');
+    btn.className = 'reveal-btn';
+    btn.innerHTML = '<span>+</span> Reveal clue';
+    btn.onclick = () => { revealed = 1; renderMain(); };
+    area.appendChild(btn);
+  }
+
+  const panel = document.createElement('div');
+  panel.className = 'classify-panel';
+  if (revealed > 0) panel.style.display = 'block';
+
+  panel.innerHTML = '<div class="q">Which data quality dimension does this failure represent?</div>';
+  const grid = document.createElement('div');
+  grid.className = 'dim-grid';
+
+  DIMS.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'dim-btn';
+    btn.innerHTML = '<strong>' + d.name + '</strong><span>' + d.def + '</span>';
+    const chosen = answers[classified];
+    if (chosen) {
+      btn.disabled = true;
+      if (d.name === c.answer) btn.classList.add(d.name === chosen ? 'correct' : 'reveal-ans');
+      if (d.name === chosen && chosen !== c.answer) btn.classList.add('wrong');
+    } else {
+      btn.onclick = () => {
+        answers[classified] = d.name;
+        if (d.name === c.answer) score++;
+        renderMain();
+      };
+    }
+    grid.appendChild(btn);
+  });
+  panel.appendChild(grid);
+
+  const fb = document.createElement('div');
+  fb.className = 'feedback-box';
+  if (answers[classified]) {
+    const correct = answers[classified] === c.answer;
+    fb.style.display = 'block';
+    fb.className = 'feedback-box ' + (correct ? 'correct' : 'wrong');
+    fb.innerHTML = '<div class="fb-title">' + (correct ? 'Correct — ' + c.answer : 'Not quite. This is a ' + c.answer + ' failure') + '</div>' + c.rationale;
+  }
+  panel.appendChild(fb);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'continue-btn';
+  nextBtn.textContent = classified < CASES.length - 1 ? 'Investigate next clue →' : 'See case verdict →';
+  if (answers[classified]) nextBtn.style.display = 'inline-block';
+  nextBtn.onclick = () => { classified++; revealed = 0; updatePips(); renderMain(); };
+  panel.appendChild(nextBtn);
+
+  area.appendChild(panel);
+}
+
+function makeClue(num, tag, text, active) {
+  const item = document.createElement('div');
+  item.className = 'clue-item';
+  item.innerHTML =
+    '<div class="clue-dot ' + (active ? 'active' : 'dim') + '">' + num + '</div>' +
+    '<div class="clue-bubble"><div class="clue-tag">' + tag + '</div>' + text + '</div>';
+  return item;
+}
+
+function showVerdict() {
+  document.getElementById('main-area').innerHTML = '';
+  const v = document.getElementById('verdict');
+  v.style.display = 'block';
+  const msg = score === 6 ? 'You identified every failure correctly.' :
+               score >= 4 ? 'Strong analysis — review the cases you missed below.' :
+               'Review the rationale for each failure below and retry.';
+  v.innerHTML =
+    '<h2>Case closed</h2><div class="sub">' + msg + '</div>' +
+    '<div class="verdict-score">' + score + ' / ' + CASES.length + '</div>' +
+    '<div class="verdict-rows">' +
+    CASES.map((c, i) => {
+      const ok = answers[i] === c.answer;
+      return '<div class="v-row"><span class="v-icon">' + (ok ? '✓' : '✗') + '</span>' +
+             '<div><span class="v-dim">' + c.answer + ':</span> ' + c.rationale + '</div></div>';
+    }).join('') +
+    '</div>' +
+    '<button class="restart-btn" onclick="restart()">Restart investigation</button>';
+  updatePips();
+}
+
+function restart() {
+  revealed = 0; classified = 0; score = 0;
+  answers = new Array(CASES.length).fill(null);
+  document.getElementById('verdict').style.display = 'none';
+  buildPips();
+  renderMain();
+}
+
+buildPips();
+renderMain();
+</script>
+</body>
+</html>
