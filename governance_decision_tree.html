@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Governance Decision Tree — Who Decides?</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page:     #f4f3f0;
+  --bg-card:     #ffffff;
+  --bg-surface:  #f0efe9;
+  --bg-dim:      #e8e7e1;
+  --text-1:      #1a1918;
+  --text-2:      #5a5955;
+  --text-3:      #9a9990;
+  --border:      rgba(0,0,0,0.10);
+  --border-md:   rgba(0,0,0,0.18);
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --teal:        #1D9E75;
+  --teal-light:  #E1F5EE;
+  --teal-dark:   #085041;
+  --teal-mid:    #5DCAA5;
+  --amber:       #BA7517;
+  --amber-light: #FFF8EC;
+  --red:         #A32D2D;
+  --red-light:   #FCEBEB;
+  --blue:        #185FA5;
+  --blue-light:  #E6F1FB;
+  --blue-dark:   #0C447C;
+  --purple:      #534AB7;
+  --purple-light:#EEEDFE;
+  --font:        system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:        'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page:     #181816;
+    --bg-card:     #222220;
+    --bg-surface:  #2a2a28;
+    --bg-dim:      #323230;
+    --text-1:      #f0efeb;
+    --text-2:      #a0a098;
+    --text-3:      #666660;
+    --border:      rgba(255,255,255,0.08);
+    --border-md:   rgba(255,255,255,0.15);
+    --teal-light:  #0a3d2b;
+    --amber-light: #2e1f00;
+    --red-light:   #3d1010;
+    --blue-light:  #0c2340;
+    --purple-light:#1a1840;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg-page);
+  color: var(--text-1);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+}
+
+#app { max-width: 720px; margin: 0 auto; }
+
+/* ── Progress trail ── */
+.trail {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 1.5rem; flex-wrap: wrap;
+}
+.trail-step {
+  font-size: 11px; font-weight: 500;
+  padding: 3px 9px; border-radius: 20px;
+  border: 0.5px solid var(--border-md);
+  color: var(--text-3); background: var(--bg-surface);
+  transition: all 0.2s;
+}
+.trail-step.done   { background: var(--teal-light); color: var(--teal-dark); border-color: var(--teal-mid); }
+.trail-step.active { background: var(--text-1); color: var(--bg-page); border-color: var(--text-1); }
+.trail-arrow { font-size: 11px; color: var(--text-3); }
+
+/* ── Scenario card ── */
+.scenario-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  animation: fadeUp 0.3s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Slack message style ── */
+.slack-block {
+  background: #1a1d27;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.25rem;
+  animation: fadeUp 0.3s ease both;
+}
+.slack-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.slack-avatar {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: linear-gradient(135deg, #4a90e2, #7c6af0);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.slack-meta { flex: 1; }
+.slack-name { font-size: 13px; font-weight: 600; color: #e8eaf2; }
+.slack-time { font-size: 11px; color: #8a8fa8; }
+.slack-app-badge {
+  font-size: 10px; font-weight: 600; color: #1D9E75;
+  background: rgba(29,158,117,0.12); padding: 2px 6px; border-radius: 4px;
+  margin-left: 4px;
+}
+.slack-body {
+  font-size: 13.5px; color: #c9d1d9; line-height: 1.7;
+}
+.slack-body strong { color: #ffa657; font-weight: 500; }
+
+/* ── Node header ── */
+.node-header {
+  padding: 1rem 1.25rem 0.875rem;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--bg-surface);
+}
+.node-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 20px;
+  margin-bottom: 6px; display: inline-block;
+}
+.badge-correct   { background: var(--teal-light);   color: var(--teal-dark); }
+.badge-wrong     { background: var(--red-light);    color: var(--red); }
+.badge-partial   { background: var(--amber-light);  color: var(--amber); }
+.badge-neutral   { background: var(--blue-light);   color: var(--blue-dark); }
+.badge-complete  { background: var(--purple-light); color: var(--purple); }
+
+.node-title {
+  font-size: 15px; font-weight: 600; color: var(--text-1); line-height: 1.35;
+}
+
+/* ── Node body ── */
+.node-body { padding: 1rem 1.25rem; }
+.node-body p {
+  font-size: 13.5px; color: var(--text-2); line-height: 1.75; margin-bottom: 0.875rem;
+}
+.node-body p:last-child { margin-bottom: 0; }
+.node-body strong { color: var(--text-1); font-weight: 500; }
+
+/* ── Definition comparison ── */
+.def-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin: 1rem 0;
+}
+@media (max-width: 520px) { .def-grid { grid-template-columns: 1fr; } }
+
+.def-card {
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  border: 0.5px solid var(--border-md);
+}
+.def-card.quality { background: var(--blue-light); border-color: rgba(24,95,165,0.25); }
+.def-card.finance { background: var(--amber-light); border-color: rgba(186,117,23,0.25); }
+.def-team {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.07em; margin-bottom: 4px;
+}
+.def-card.quality .def-team { color: var(--blue-dark); }
+.def-card.finance .def-team { color: var(--amber); }
+.def-count {
+  font-size: 22px; font-weight: 700; margin-bottom: 3px;
+}
+.def-card.quality .def-count { color: var(--blue-dark); }
+.def-card.finance .def-count { color: var(--amber); }
+.def-method { font-size: 12px; line-height: 1.5; }
+.def-card.quality .def-method { color: var(--blue-dark); }
+.def-card.finance .def-method { color: var(--amber); }
+
+/* ── Council resolution ── */
+.resolution-block {
+  background: var(--teal-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 0.5px solid var(--teal-mid);
+}
+.resolution-label {
+  font-size: 10px; font-weight: 600; color: var(--teal);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
+}
+.resolution-row {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 13px; color: var(--teal-dark); margin-bottom: 5px; line-height: 1.5;
+}
+.resolution-row:last-child { margin-bottom: 0; }
+.res-use { font-weight: 500; flex-shrink: 0; }
+
+/* ── Warning / consequence block ── */
+.consequence {
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  margin: 0.875rem 0;
+  font-size: 13px; line-height: 1.65;
+}
+.consequence.wrong   { background: var(--red-light);   color: var(--red);   border: 0.5px solid #f09595; }
+.consequence.partial { background: var(--amber-light); color: var(--amber); border: 0.5px solid #e8b84b; }
+.consequence.tip     { background: var(--blue-light);  color: var(--blue-dark); border: 0.5px solid rgba(24,95,165,0.25); }
+.consequence-title { font-weight: 600; margin-bottom: 4px; }
+
+/* ── Choice buttons ── */
+.choices { padding: 0 1.25rem 1.25rem; display: flex; flex-direction: column; gap: 8px; }
+.choice-btn {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-md);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px; color: var(--text-1); cursor: pointer;
+  text-align: left; line-height: 1.5;
+  transition: background 0.12s, border-color 0.12s;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.choice-btn:hover { background: var(--bg-dim); border-color: var(--text-3); }
+.choice-key {
+  font-size: 11px; font-weight: 700; color: var(--text-3);
+  background: var(--bg-dim); border-radius: 4px;
+  padding: 1px 6px; flex-shrink: 0; margin-top: 1px;
+  font-family: var(--mono); letter-spacing: 0.04em;
+}
+
+/* ── Action buttons ── */
+.action-row {
+  padding: 0 1.25rem 1.25rem;
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.action-btn {
+  background: var(--teal); border: none;
+  border-radius: var(--radius-sm); padding: 9px 18px;
+  font-size: 13px; font-weight: 500; color: #fff;
+  cursor: pointer; transition: background 0.15s;
+}
+.action-btn:hover { background: var(--teal-dark); }
+.action-btn.secondary {
+  background: transparent; border: 0.5px solid var(--border-md);
+  color: var(--text-2);
+}
+.action-btn.secondary:hover { background: var(--bg-surface); color: var(--text-1); }
+.action-btn.restart {
+  background: transparent; border: 0.5px solid var(--red);
+  color: var(--red);
+}
+.action-btn.restart:hover { background: var(--red-light); }
+
+/* ── Closing reflection ── */
+.reflection-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeUp 0.4s ease both;
+}
+.reflection-header {
+  background: var(--purple-light);
+  padding: 1rem 1.25rem;
+  border-bottom: 0.5px solid rgba(83,74,183,0.2);
+}
+.reflection-header h2 {
+  font-size: 16px; font-weight: 600; color: var(--purple);
+}
+.reflection-header p { font-size: 13px; color: var(--purple); opacity: 0.85; margin-top: 3px; }
+.reflection-body { padding: 1.25rem; }
+
+.takeaway-list { margin: 1rem 0; display: flex; flex-direction: column; gap: 10px; }
+.takeaway-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  font-size: 13.5px; color: var(--text-2); line-height: 1.65;
+  padding: 0.875rem 1rem;
+  background: var(--bg-surface); border-radius: var(--radius-md);
+}
+.takeaway-num {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  background: var(--purple-light); color: var(--purple);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; margin-top: 1px;
+}
+.takeaway-item strong { color: var(--text-1); font-weight: 500; }
+
+.maturity-block {
+  background: var(--teal-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 0.5px solid var(--teal-mid);
+}
+.maturity-label {
+  font-size: 11px; font-weight: 600; color: var(--teal);
+  text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px;
+}
+.maturity-levels {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+@media (max-width: 500px) { .maturity-levels { grid-template-columns: 1fr 1fr; } }
+.maturity-level {
+  background: var(--bg-card); border-radius: var(--radius-sm);
+  padding: 8px 10px; font-size: 12px; line-height: 1.4;
+  border: 0.5px solid var(--border);
+}
+.ml-num { font-weight: 700; color: var(--teal); margin-bottom: 2px; }
+.ml-desc { color: var(--text-2); }
+
+.reflection-q {
+  margin-top: 1rem; padding: 1rem;
+  background: var(--bg-surface); border-radius: var(--radius-md);
+  border-left: 3px solid var(--purple);
+  font-size: 13.5px; color: var(--text-2); line-height: 1.7;
+}
+.reflection-q strong { color: var(--text-1); font-weight: 500; }
+
+.divider { border: none; border-top: 0.5px solid var(--border); margin: 1.75rem 0; }
+
+/* ── Opening screen ── */
+.opening-card {
+  background: var(--bg-card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  animation: fadeUp 0.3s ease both;
+}
+.opening-header {
+  padding: 1.25rem;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface);
+}
+.eyebrow {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 6px;
+}
+.opening-header h1 {
+  font-size: 20px; font-weight: 700; color: var(--text-1);
+  line-height: 1.25; margin-bottom: 6px;
+}
+.opening-header p {
+  font-size: 13px; color: var(--text-2); line-height: 1.6;
+}
+.opening-body { padding: 1.25rem; }
+.opening-body p {
+  font-size: 13.5px; color: var(--text-2); line-height: 1.75; margin-bottom: 1rem;
+}
+.role-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--blue-light); color: var(--blue-dark);
+  font-size: 12px; font-weight: 500;
+  padding: 5px 12px; border-radius: 20px; margin-bottom: 1rem;
+  border: 0.5px solid rgba(24,95,165,0.25);
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ── State ──
+let nodeHistory = [];
+let currentNode = 'opening';
+
+// ── Node definitions ──
+const NODES = {
+
+  opening: {
+    render() {
+      return `
+        <div class="opening-card">
+          <div class="opening-header">
+            <div class="eyebrow">Activity E4 · Data Management in Healthcare</div>
+            <h1>Governance Decision Tree</h1>
+            <p>Navigate a real data governance dispute and learn how health systems resolve definitional conflicts in clinical data.</p>
+          </div>
+          <div class="opening-body">
+            <div class="role-badge">
+              <span>👤</span>
+              <span>Your role: Clinical Informatics Specialist, Riverside Health System</span>
+            </div>
+            <p>It's Monday morning. You've just received an urgent Slack message from Dr. Martinez, the Medical Director of Quality.</p>
+          </div>
+        </div>
+
+        <div class="slack-block">
+          <div class="slack-header">
+            <div class="slack-avatar">M</div>
+            <div class="slack-meta">
+              <div class="slack-name">Dr. Martinez <span class="slack-app-badge">Medical Director, Quality</span></div>
+              <div class="slack-time">Today at 8:14 AM</div>
+            </div>
+          </div>
+          <div class="slack-body">
+            We have a problem. I pulled our diabetic patient list for the <strong>CMS quality report</strong> and got <strong>12,400 patients</strong>. Finance pulled the same list for <strong>value-based payment</strong> and got <strong>19,800</strong>. The report is due <strong>Friday</strong>. Which number is right? 🙏
+          </div>
+        </div>
+
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-neutral">Node 1 — Opening Decision</div>
+            <div class="node-title">What's your first move?</div>
+          </div>
+          <div class="choices">
+            <button class="choice-btn" onclick="goTo('2A')">
+              <span class="choice-key">A</span>
+              <span>Pick whichever number is larger and submit the report — deadline is Friday.</span>
+            </button>
+            <button class="choice-btn" onclick="goTo('2B')">
+              <span class="choice-key">B</span>
+              <span>Ask both teams how they defined "diabetic patient" for their respective queries.</span>
+            </button>
+            <button class="choice-btn" onclick="goTo('2C')">
+              <span class="choice-key">C</span>
+              <span>Call the EHR vendor's support line to figure out why the system is producing different numbers.</span>
+            </button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '2A': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-wrong">Wrong Path</div>
+            <div class="node-title">You submitted the larger number — and now you have a bigger problem.</div>
+          </div>
+          <div class="node-body">
+            <p>You submit the larger number (19,800). Two weeks later, CMS flags your submission as an outlier — your diabetic population is <strong>60% higher</strong> than peer hospitals of comparable size. Your compliance officer is now on the phone with CMS.</p>
+            <div class="consequence wrong">
+              <div class="consequence-title">What went wrong?</div>
+              The number wasn't wrong because of a system error — it was wrong because the two teams were answering different questions using different definitions. Submitting without understanding the source was the mistake.
+            </div>
+            <p>Data governance exists precisely to prevent this. The first step is always to understand <em>what question each number is answering</em> — not just which number looks right.</p>
+          </div>
+          <div class="action-row">
+            <button class="action-btn restart" onclick="restart()">← Restart the scenario</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '2C': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-partial">Partial Path</div>
+            <div class="node-title">The vendor confirms: no system errors. Half a day lost.</div>
+          </div>
+          <div class="node-body">
+            <p>The EHR vendor support rep confirms there are no technical errors. "Both queries ran correctly," she says. "The numbers are different because they're pulling from <strong>different data sources</strong>."</p>
+            <div class="consequence partial">
+              <div class="consequence-title">This confirms a governance issue, not a technical one.</div>
+              Calling the vendor wasn't wrong — but it wasn't the right first step. The question of how to define a patient population is a governance and clinical question, not a systems question. You've spent half a day confirming what a five-minute conversation with the two teams would have revealed.
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" onclick="goTo('2B')">Continue to the correct path →</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '2B': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-correct">Correct Path</div>
+            <div class="node-title">You ask both teams. Now you understand the problem.</div>
+          </div>
+          <div class="node-body">
+            <p>You reach out to the quality team and the finance team and ask how each defined "diabetic patient" in their query. Here's what you learn:</p>
+            <div class="def-grid">
+              <div class="def-card quality">
+                <div class="def-team">Quality Team</div>
+                <div class="def-count">12,400</div>
+                <div class="def-method">Active ICD-10-CM diabetes codes on the <strong>EHR problem list</strong></div>
+              </div>
+              <div class="def-card finance">
+                <div class="def-team">Finance Team</div>
+                <div class="def-count">19,800</div>
+                <div class="def-method">Any patient with a diabetes medication on the <strong>active medication list</strong></div>
+              </div>
+            </div>
+            <p>Both are defensible definitions. Neither is "wrong." But they answer different questions — and your organization has never formally decided which definition applies to which use case.</p>
+            <p><strong>Now what do you do?</strong></p>
+          </div>
+          <div class="choices">
+            <button class="choice-btn" onclick="goTo('3A')">
+              <span class="choice-key">A</span>
+              <span>Decide yourself which definition is correct and tell both teams to use it going forward.</span>
+            </button>
+            <button class="choice-btn" onclick="goTo('3B')">
+              <span class="choice-key">B</span>
+              <span>Escalate to the Data Governance Council for an authoritative ruling.</span>
+            </button>
+            <button class="choice-btn" onclick="goTo('3C')">
+              <span class="choice-key">C</span>
+              <span>Ask the Chief Medical Officer to make the call — this involves clinical definitions.</span>
+            </button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '3A': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-wrong">Wrong Path</div>
+            <div class="node-title">Your unilateral decision just created a bigger problem.</div>
+          </div>
+          <div class="node-body">
+            <p>You send an email to both teams: "Use the problem list definition going forward." Dr. Martinez thanks you. Finance pushes back immediately — their value-based payment contract with the payer uses the medication-based definition, and switching now would break their contract reporting.</p>
+            <div class="consequence wrong">
+              <div class="consequence-title">Why this failed</div>
+              You made a unilateral decision on a question that had organizational authority implications. As a Clinical Informatics Specialist, you have technical expertise — but not the authority to set binding data definitions that affect legal contracts, clinical quality measures, and multi-department workflows. That authority belongs to a governance body.
+            </div>
+            <p>The right instinct was to resolve the dispute — but the mechanism matters as much as the outcome.</p>
+          </div>
+          <div class="action-row">
+            <button class="action-btn restart" onclick="goTo('2B')">← Back to Node 2B</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '3B': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-correct">Correct Path</div>
+            <div class="node-title">The Data Governance Council meets and makes a formal ruling.</div>
+          </div>
+          <div class="node-body">
+            <p>You bring the issue to the <strong>Data Governance Council</strong> — a cross-functional body including the CMO, CNO, CFO, CIO, HIM Director, and Clinical Informatics lead. They meet weekly.</p>
+            <p>At the meeting, the Council reviews the use case and the two competing definitions. After discussion, they reach a decision:</p>
+            <div class="resolution-block">
+              <div class="resolution-label">Council Ruling</div>
+              <div class="resolution-row"><span class="res-use">CMS quality reporting:</span> Use ICD-10 problem list codes — this matches CMS measure specifications</div>
+              <div class="resolution-row"><span class="res-use">Value-based payment analytics:</span> Use the broader definition — medication list plus problem list</div>
+              <div class="resolution-row"><span class="res-use">Documentation:</span> Both definitions are entered in the data dictionary with their approved use cases</div>
+            </div>
+            <p>The Friday deadline is tight — but the CMO makes a provisional ruling that the quality team's definition applies for this CMS report, pending full Council ratification next week.</p>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" onclick="goTo('4', '3B')">Continue to implementation →</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '3C': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-correct">Also Correct — with a caveat</div>
+            <div class="node-title">The CMO makes a call. It works — but it's fragile.</div>
+          </div>
+          <div class="node-body">
+            <p>You reach the CMO. She agrees to weigh in. She rules that <strong>problem list codes are the appropriate definition</strong> for clinical quality measures — this aligns with how CMS defines the measure. She also recommends that finance bring their medication-based definition to the Data Governance Council for formal documentation.</p>
+            <div class="consequence tip">
+              <div class="consequence-title">Why this works — and why it's incomplete</div>
+              The CMO has the clinical authority to make this call, and her ruling is correct. But an individual decision, made outside a formal governance process, isn't automatically documented or enforced. The same dispute could recur next quarter when a different analyst runs the same query — and that analyst won't know about the CMO's ruling.
+            </div>
+            <p>Governance decisions need to live somewhere permanent — a data dictionary, a query library, a governance portal — not just in an email or a hallway conversation.</p>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" onclick="goTo('4', '3C')">Continue to implementation →</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '4': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-neutral">Node 4 — Implementation</div>
+            <div class="node-title">The definition is resolved. Now you need to make it stick.</div>
+          </div>
+          <div class="node-body">
+            <p>The governance decision has been made. Both definitions are approved for their respective use cases. What do you recommend as the next step to make sure this decision has lasting impact?</p>
+          </div>
+          <div class="choices">
+            <button class="choice-btn" onclick="goTo('5A')">
+              <span class="choice-key">A</span>
+              <span>Send an email to both teams with the decision and move on — Friday's deadline is still looming.</span>
+            </button>
+            <button class="choice-btn" onclick="goTo('5B')">
+              <span class="choice-key">B</span>
+              <span>Document the approved definitions in the data dictionary, update the EHR's pre-built query library, and schedule a 30-day follow-up.</span>
+            </button>
+            <button class="choice-btn" onclick="goTo('5C')">
+              <span class="choice-key">C</span>
+              <span>Ask IT to lock down the query tools so only the approved definitions can be used.</span>
+            </button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '5A': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-partial">Partial</div>
+            <div class="node-title">The email goes out. Three months later, the same problem is back.</div>
+          </div>
+          <div class="node-body">
+            <p>You send the email and hit the Friday deadline. Three months later, a new analyst runs the diabetes query for a population health project and uses neither the problem list nor the medication list — they use HbA1c lab values. Nobody told them there was an approved definition.</p>
+            <div class="consequence partial">
+              <div class="consequence-title">Why the email wasn't enough</div>
+              Governance decisions need to live somewhere permanent — a data dictionary, a query library, a governance portal. Email threads are invisible to the next analyst, the next hire, and anyone who wasn't cc'd. Institutional memory stored in inboxes evaporates.
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" onclick="goTo('5B')">See the better approach →</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '5C': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-wrong">Wrong Path</div>
+            <div class="node-title">IT locks the tools. Now three other teams can't work.</div>
+          </div>
+          <div class="node-body">
+            <p>IT locks the query tools to approved definitions only. Now the research team can't run exploratory queries for a grant application, and the nursing informatics team can't pull ad hoc reports for their quality improvement project. Both teams escalate to the CIO.</p>
+            <div class="consequence wrong">
+              <div class="consequence-title">Governance isn't about locking things down</div>
+              Restricting tool access treats analysts as the problem — but the problem was the absence of documented standards, not the presence of empowered users. Good governance establishes clear, documented definitions that people can find and use confidently. Over-restriction creates shadow IT and workarounds that are harder to govern than the original problem.
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" onclick="goTo('5B')">See the correct approach →</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  '5B': {
+    render() {
+      return `
+        <div class="scenario-card">
+          <div class="node-header">
+            <div class="node-badge badge-correct">Correct — Resolution</div>
+            <div class="node-title">You build the infrastructure to prevent the same question from recurring.</div>
+          </div>
+          <div class="node-body">
+            <p>You update the <strong>data dictionary</strong> with both approved definitions and their designated use cases. The EHR analytics team creates two pre-built queries — one for CMS quality reporting, one for value-based payment analytics — clearly labeled with when each should be used.</p>
+            <p>The Data Governance Council adds "standard population definitions" to their standing agenda for quarterly review. Any new population definition request now goes through a formal intake process.</p>
+            <div class="resolution-block">
+              <div class="resolution-label">Three months later</div>
+              <div class="resolution-row">A new analyst asks: "How do I pull the diabetic patient list?"</div>
+              <div class="resolution-row">The answer is in the data dictionary. Both definitions are there, with use case guidance.</div>
+              <div class="resolution-row">The dispute that took two days to resolve in January takes two minutes to answer in April.</div>
+            </div>
+          </div>
+          <div class="action-row">
+            <button class="action-btn" onclick="goTo('complete')">See the closing reflection →</button>
+          </div>
+        </div>`;
+    }
+  },
+
+  complete: {
+    render() {
+      return `
+        <div class="reflection-card">
+          <div class="reflection-header">
+            <h2>Scenario complete</h2>
+            <p>You navigated a real data governance dispute — the kind that plays out in health systems every day.</p>
+          </div>
+          <div class="reflection-body">
+            <div class="takeaway-list">
+              <div class="takeaway-item">
+                <div class="takeaway-num">1</div>
+                <div>The dispute wasn't caused by <strong>bad data or broken systems</strong>. It was caused by the absence of an authoritative, documented definition. Two teams asked the same question using different rules — and got defensible but incompatible answers.</div>
+              </div>
+              <div class="takeaway-item">
+                <div class="takeaway-num">2</div>
+                <div>Resolving it required <strong>organizational authority</strong> — not just technical expertise. The Clinical Informatics Specialist could identify the problem, but the Data Governance Council or CMO held the authority to make a binding ruling.</div>
+              </div>
+              <div class="takeaway-item">
+                <div class="takeaway-num">3</div>
+                <div>The "fix" wasn't just answering today's question — it was <strong>building the infrastructure</strong> to prevent the same question from recurring: the data dictionary, the query library, the quarterly review cycle.</div>
+              </div>
+            </div>
+
+            <div class="maturity-block">
+              <div class="maturity-label">Data Governance Maturity</div>
+              <div class="maturity-levels">
+                <div class="maturity-level">
+                  <div class="ml-num">Level 1</div>
+                  <div class="ml-desc">Disputes resolved ad hoc, no documentation</div>
+                </div>
+                <div class="maturity-level">
+                  <div class="ml-num">Level 2</div>
+                  <div class="ml-desc">Governance body exists but meets reactively</div>
+                </div>
+                <div class="maturity-level">
+                  <div class="ml-num">Level 3</div>
+                  <div class="ml-desc">Definitions documented in a data dictionary</div>
+                </div>
+                <div class="maturity-level">
+                  <div class="ml-num">Level 4</div>
+                  <div class="ml-desc">Definitions enforced, reviewed, and updated regularly</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="reflection-q">
+              <strong>Consider:</strong> Which maturity level do you think most healthcare organizations are currently at — and what would it take to move to the next level? What structural, cultural, or technical barriers make Level 4 hard to reach?
+            </div>
+          </div>
+        </div>
+        <div class="action-row" style="margin-top:1rem;">
+          <button class="action-btn secondary" onclick="restart()">Restart the scenario</button>
+        </div>`;
+    }
+  }
+};
+
+// ── Trail config ──
+const TRAIL_STEPS = [
+  { id: 'opening', label: 'Start' },
+  { id: '2B',      label: 'Investigate' },
+  { id: '3B',      label: 'Escalate' },
+  { id: '4',       label: 'Implement' },
+  { id: '5B',      label: 'Document' },
+  { id: 'complete',label: 'Complete' }
+];
+
+const TRAIL_IDS = TRAIL_STEPS.map(s => s.id);
+
+function trailIndex(nodeId) {
+  // Map non-canonical nodes to their canonical equivalent for trail display
+  const map = { '2A': 'opening', '2C': '2B', '3A': '2B', '3C': '3B', '5A': '4', '5C': '4' };
+  const canonical = map[nodeId] || nodeId;
+  return TRAIL_IDS.indexOf(canonical);
+}
+
+function renderTrail(nodeId) {
+  const activeIdx = trailIndex(nodeId);
+  return TRAIL_STEPS.map((step, i) => {
+    const cls = i < activeIdx ? 'trail-step done' : i === activeIdx ? 'trail-step active' : 'trail-step';
+    const arrow = i < TRAIL_STEPS.length - 1 ? '<span class="trail-arrow">›</span>' : '';
+    return '<span class="' + cls + '">' + step.label + '</span>' + arrow;
+  }).join('');
+}
+
+function render() {
+  const node = NODES[currentNode];
+  if (!node) return;
+  const trail = ['opening','2B','3B','3C','4','5B','complete'].includes(currentNode)
+    ? '<div class="trail">' + renderTrail(currentNode) + '</div>'
+    : '';
+  document.getElementById('app').innerHTML = trail + node.render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goTo(nodeId) {
+  nodeHistory.push(currentNode);
+  currentNode = nodeId;
+  render();
+}
+
+function restart() {
+  nodeHistory = [];
+  currentNode = 'opening';
+  render();
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
