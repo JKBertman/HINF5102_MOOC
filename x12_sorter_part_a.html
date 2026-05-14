@@ -58,6 +58,9 @@ body {
   color: var(--text-1);
   min-height: 100vh;
   padding: 2rem 1rem 3rem;
+  /* prevent text selection during drag */
+  -webkit-user-select: none;
+  user-select: none;
 }
 #app { max-width: 760px; margin: 0 auto; }
 
@@ -84,6 +87,7 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
   display: flex; align-items: baseline; gap: 10px;
   padding: 6px 0; border-bottom: 0.5px solid var(--border);
   font-size: 13px; color: var(--text-2); line-height: 1.5;
+  -webkit-user-select: text; user-select: text;
 }
 .ref-item:last-child { border-bottom: none; }
 .ref-letter {
@@ -103,6 +107,17 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
 .section-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
 .section-desc  { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 1.25rem; }
 
+/* ── Pool ── */
+.pool-label {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-3); margin-bottom: 8px;
+}
+.events-pool {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 1.25rem;
+  min-height: 24px;
+}
+
 /* ── Sort buckets ── */
 .sort-layout {
   display: grid;
@@ -116,26 +131,43 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
   border-radius: var(--radius-md);
   border: 0.5px solid var(--border-md);
   overflow: hidden;
+  transition: border-color 0.15s;
+}
+.bucket.drag-over {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 2px var(--teal-light);
 }
 .bucket-head {
   padding: 8px 12px;
   font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
   text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
 }
 .bucket.pre  .bucket-head { background: var(--blue-light);  color: var(--blue-dark); }
 .bucket.post .bucket-head { background: var(--amber-light); color: var(--amber); }
+.bucket-hint {
+  font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  opacity: 0.7;
+}
 .bucket-body {
   background: var(--bg-surface);
   padding: 8px;
   min-height: 80px;
   display: flex; flex-direction: column; gap: 6px;
+  transition: background 0.15s;
+}
+.bucket.drag-over .bucket-body {
+  background: var(--teal-light);
+}
+.drop-hint {
+  font-size: 12px; color: var(--text-3);
+  text-align: center; padding: 18px 8px;
+  border: 1.5px dashed var(--border-md);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
 }
 
-/* ── Event chips ── */
-.events-pool {
-  display: flex; flex-direction: column; gap: 6px;
-  margin-bottom: 1.25rem;
-}
+/* ── Chips ── */
 .event-chip {
   background: var(--bg-card);
   border: 0.5px solid var(--border-md);
@@ -143,35 +175,39 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
   padding: 9px 12px;
   font-size: 13px; color: var(--text-1); line-height: 1.45;
   display: flex; align-items: flex-start; gap: 10px;
-  cursor: pointer; transition: background 0.12s, border-color 0.12s;
-  animation: fadeUp 0.25s ease both;
+  cursor: grab;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.12s;
 }
-.event-chip:hover { background: var(--bg-surface); }
+.event-chip:hover { background: var(--bg-surface); box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+.event-chip.dragging { opacity: 0.4; cursor: grabbing; }
+
 .event-chip .ev-letter {
   font-size: 11px; font-weight: 600; color: var(--text-3);
   min-width: 16px; flex-shrink: 0; margin-top: 1px;
 }
-.event-chip.in-pre  { background: var(--blue-light);  border-color: var(--blue);  }
-.event-chip.in-post { background: var(--amber-light); border-color: var(--amber); }
+
+/* in-bucket variant */
+.event-chip.in-pre  { background: var(--blue-light);  border-color: var(--blue);  border-left: 2px solid var(--blue); }
+.event-chip.in-post { background: var(--amber-light); border-color: var(--amber); border-left: 2px solid var(--amber); }
 .event-chip.in-pre  .ev-letter { color: var(--blue-dark); }
 .event-chip.in-post .ev-letter { color: var(--amber); }
 
-/* placed inside a bucket */
-.bucket-event {
-  background: var(--bg-card);
-  border: 0.5px solid var(--border-md);
-  border-radius: var(--radius-sm);
-  padding: 7px 10px;
-  font-size: 12.5px; color: var(--text-1); line-height: 1.4;
-  display: flex; align-items: flex-start; gap: 8px;
-  cursor: pointer; transition: background 0.12s;
-  animation: fadeUp 0.2s ease both;
-}
-.bucket-event:hover { background: var(--bg-dim); }
-.bucket-event .ev-letter { font-size: 11px; font-weight: 600; color: var(--text-3); min-width: 16px; flex-shrink: 0; margin-top: 1px; }
+/* result states (post-check, no cursor) */
+.event-chip.correct { background: var(--teal-light);  border-color: var(--teal); border-left: 2px solid var(--teal); cursor: default; }
+.event-chip.wrong   { background: var(--red-light);   border-color: var(--red);  border-left: 2px solid var(--red);  cursor: default; }
+.event-chip.correct .ev-letter { color: var(--teal-dark); }
+.event-chip.wrong   .ev-letter { color: var(--red); }
 
-.bucket.pre  .bucket-event { border-left: 2px solid var(--blue); }
-.bucket.post .bucket-event { border-left: 2px solid var(--amber); }
+/* drag ghost (touch) */
+#drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.85;
+  max-width: 320px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  display: none;
+}
 
 /* ── Check button ── */
 .check-btn {
@@ -182,12 +218,6 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
 }
 .check-btn:hover    { background: var(--teal-dark); }
 .check-btn:disabled { background: var(--bg-dim); color: var(--text-3); cursor: default; }
-
-/* ── Result states ── */
-.event-chip.correct  { background: var(--teal-light);  border-color: var(--teal); cursor: default; }
-.event-chip.wrong    { background: var(--red-light);   border-color: var(--red);  cursor: default; }
-.bucket-event.correct { background: var(--teal-light); border-left-color: var(--teal); cursor: default; }
-.bucket-event.wrong   { background: var(--red-light);  border-left-color: var(--red);  cursor: default; }
 
 /* ── Feedback ── */
 .feedback-box {
@@ -246,24 +276,25 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
     <span class="section-badge">Part A</span>
     <span class="section-title">Pre-Service vs. Post-Service</span>
   </div>
-  <p class="section-desc">Click an event to assign it to a bucket — PRE-SERVICE (happens before care is delivered) or POST-SERVICE (happens after). Click an event already in a bucket to move it back to the pool. Select all that apply for each category, then check your answers.</p>
+  <p class="section-desc">Drag each event into the correct bucket. On mobile, press and hold to drag. Once all 8 events are placed, click <strong>Check my sort</strong> to see your results.</p>
 
   <!-- Pool -->
+  <div class="pool-label">Unsorted events — drag to a bucket below</div>
   <div class="events-pool" id="pool"></div>
 
   <!-- Buckets -->
   <div class="sort-layout">
-    <div class="bucket pre">
-      <div class="bucket-head">Pre-service</div>
-      <div class="bucket-body" id="bucket-pre"></div>
+    <div class="bucket pre" id="bucket-pre" data-bucket="pre">
+      <div class="bucket-head">Pre-service <span class="bucket-hint">drag here</span></div>
+      <div class="bucket-body" id="body-pre"></div>
     </div>
-    <div class="bucket post">
-      <div class="bucket-head">Post-service</div>
-      <div class="bucket-body" id="bucket-post"></div>
+    <div class="bucket post" id="bucket-post" data-bucket="post">
+      <div class="bucket-head">Post-service <span class="bucket-hint">drag here</span></div>
+      <div class="bucket-body" id="body-post"></div>
     </div>
   </div>
 
-  <button class="check-btn" id="check-btn" onclick="checkAnswers()">Check my sort</button>
+  <button class="check-btn" id="check-btn" disabled onclick="checkAnswers()">Check my sort</button>
 
   <div class="feedback-box" id="feedback"></div>
   <div class="final-callout" id="final-callout">
@@ -272,6 +303,10 @@ h1 { font-size: 20px; font-weight: 600; color: var(--text-1); margin-bottom: 6px
   </div>
 
 </div>
+
+<!-- Ghost element for touch drag -->
+<div id="drag-ghost"></div>
+
 <script>
 const EVENTS = [
   { id: 'A', text: "The patient's health plan sends the provider an explanation of payment, showing the allowed amount, adjustments, and patient responsibility." },
@@ -290,39 +325,53 @@ const POST_CORRECT = new Set(['A', 'D', 'E', 'G']);
 // state: 'pool' | 'pre' | 'post'
 let assignments = {};
 EVENTS.forEach(e => assignments[e.id] = 'pool');
-
 let checked = false;
 
+// ── Drag state ──
+let dragId = null;          // which event is being dragged
+let touchDragging = false;
+let touchOffsetX = 0, touchOffsetY = 0;
+const ghost = document.getElementById('drag-ghost');
+
+// ──────────────────────────────────────────────
+// Render
+// ──────────────────────────────────────────────
 function render() {
   const pool    = document.getElementById('pool');
-  const bucPre  = document.getElementById('bucket-pre');
-  const bucPost = document.getElementById('bucket-post');
-  pool.innerHTML = ''; bucPre.innerHTML = ''; bucPost.innerHTML = '';
+  const bodyPre  = document.getElementById('body-pre');
+  const bodyPost = document.getElementById('body-post');
+  pool.innerHTML = '';
+  bodyPre.innerHTML = '';
+  bodyPost.innerHTML = '';
+
+  // drop hints when buckets are empty
+  if (!EVENTS.some(e => assignments[e.id] === 'pre')) {
+    bodyPre.innerHTML = '<div class="drop-hint">Drop pre-service events here</div>';
+  }
+  if (!EVENTS.some(e => assignments[e.id] === 'post')) {
+    bodyPost.innerHTML = '<div class="drop-hint">Drop post-service events here</div>';
+  }
 
   EVENTS.forEach(ev => {
     const loc = assignments[ev.id];
-    if (loc === 'pool') {
-      const chip = makeChip(ev, 'pool');
-      pool.appendChild(chip);
-    } else {
-      const chip = makeChip(ev, loc);
-      (loc === 'pre' ? bucPre : bucPost).appendChild(chip);
-    }
+    const chip = makeChip(ev, loc);
+    if (loc === 'pool')      pool.appendChild(chip);
+    else if (loc === 'pre')  bodyPre.appendChild(chip);
+    else                     bodyPost.appendChild(chip);
   });
 
-  const allPlaced = Object.values(assignments).every(v => v !== 'pool');
+  const allPlaced = EVENTS.every(e => assignments[e.id] !== 'pool');
   document.getElementById('check-btn').disabled = !allPlaced || checked;
 }
 
 function makeChip(ev, loc) {
   const el = document.createElement('div');
-  el.className = loc === 'pool' ? 'event-chip' : 'bucket-event';
+  el.className = 'event-chip';
+  el.dataset.id = ev.id;
 
   if (checked) {
     const correctBucket = PRE_CORRECT.has(ev.id) ? 'pre' : 'post';
-    if (loc !== 'pool') {
-      el.classList.add(assignments[ev.id] === correctBucket ? 'correct' : 'wrong');
-    }
+    el.classList.add(assignments[ev.id] === correctBucket ? 'correct' : 'wrong');
   } else {
     if (loc === 'pre')  el.classList.add('in-pre');
     if (loc === 'post') el.classList.add('in-post');
@@ -331,32 +380,157 @@ function makeChip(ev, loc) {
   el.innerHTML = '<span class="ev-letter">' + ev.id + '</span><span>' + ev.text + '</span>';
 
   if (!checked) {
-    el.onclick = () => cycleAssignment(ev.id, loc);
+    // HTML5 drag
+    el.draggable = true;
+    el.addEventListener('dragstart', onDragStart);
+    el.addEventListener('dragend',   onDragEnd);
+    // Touch drag
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
   }
   return el;
 }
 
-function cycleAssignment(id, currentLoc) {
-  if (currentLoc === 'pool') {
-    // first click → ask which bucket via a small inline prompt
-    showBucketPicker(id);
-  } else {
-    // click in bucket → return to pool
-    assignments[id] = 'pool';
-    render();
-  }
+// ──────────────────────────────────────────────
+// HTML5 Drag & Drop
+// ──────────────────────────────────────────────
+function onDragStart(e) {
+  dragId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragId);
 }
 
-function showBucketPicker(id) {
-  // move directly to pre on first click, post on second, pool on third
-  // simpler UX: toggle pre → post → pool
-  const cur = assignments[id];
-  if (cur === 'pool')  assignments[id] = 'pre';
-  else if (cur === 'pre')  assignments[id] = 'post';
-  else assignments[id] = 'pool';
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  dragId = null;
+  clearDropHighlights();
+}
+
+// Drop zone events on the two bucket wrappers
+['bucket-pre', 'bucket-post'].forEach(bucId => {
+  const el = document.getElementById(bucId);
+  el.addEventListener('dragover',  onDragOver);
+  el.addEventListener('dragenter', onDragEnter);
+  el.addEventListener('dragleave', onDragLeave);
+  el.addEventListener('drop',      onDrop);
+});
+
+// Also allow dropping back on the pool
+document.getElementById('pool').addEventListener('dragover',  onDragOver);
+document.getElementById('pool').addEventListener('dragenter', e => { e.preventDefault(); });
+document.getElementById('pool').addEventListener('drop',      e => {
+  e.preventDefault();
+  if (dragId) { assignments[dragId] = 'pool'; render(); }
+});
+
+function onDragOver(e)  { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function onDragEnter(e) { e.preventDefault(); closestBucket(e.currentTarget)?.classList.add('drag-over'); }
+function onDragLeave(e) {
+  const bkt = closestBucket(e.currentTarget);
+  if (bkt && !bkt.contains(e.relatedTarget)) bkt.classList.remove('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  const id  = e.dataTransfer.getData('text/plain') || dragId;
+  const bkt = closestBucket(e.currentTarget);
+  if (id && bkt) {
+    assignments[id] = bkt.dataset.bucket;
+    render();
+  }
+  clearDropHighlights();
+}
+
+function closestBucket(el) {
+  return el.closest('.bucket') || (el.id === 'bucket-pre' ? el : el.id === 'bucket-post' ? el : null);
+}
+function clearDropHighlights() {
+  document.querySelectorAll('.bucket.drag-over').forEach(b => b.classList.remove('drag-over'));
+}
+
+// ──────────────────────────────────────────────
+// Touch Drag
+// ──────────────────────────────────────────────
+function onTouchStart(e) {
+  if (checked) return;
+  const chip = e.currentTarget;
+  dragId = chip.dataset.id;
+  touchDragging = true;
+
+  const touch = e.touches[0];
+  const rect  = chip.getBoundingClientRect();
+  touchOffsetX = touch.clientX - rect.left;
+  touchOffsetY = touch.clientY - rect.top;
+
+  // Build ghost
+  ghost.innerHTML = chip.outerHTML;
+  ghost.style.cssText = `
+    display: block;
+    width: ${rect.width}px;
+    left: ${touch.clientX - touchOffsetX}px;
+    top: ${touch.clientY - touchOffsetY}px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--border-md);
+    padding: 9px 12px;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text-1);
+    line-height: 1.45;
+  `;
+
+  chip.classList.add('dragging');
+  e.preventDefault();
+
+  document.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  document.addEventListener('touchend',   onTouchEnd,   { passive: false });
+  document.addEventListener('touchcancel',onTouchEnd,   { passive: false });
+}
+
+function onTouchMove(e) {
+  if (!touchDragging) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  ghost.style.left = (touch.clientX - touchOffsetX) + 'px';
+  ghost.style.top  = (touch.clientY - touchOffsetY)  + 'px';
+
+  clearDropHighlights();
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  const bkt = el ? el.closest('.bucket') : null;
+  if (bkt) bkt.classList.add('drag-over');
+}
+
+function onTouchEnd(e) {
+  if (!touchDragging) return;
+  touchDragging = false;
+  ghost.style.display = 'none';
+  clearDropHighlights();
+
+  const touch = (e.changedTouches || e.touches)[0];
+  const el  = document.elementFromPoint(touch.clientX, touch.clientY);
+  const bkt = el ? el.closest('.bucket') : null;
+  const pool = document.getElementById('pool');
+  const onPool = el ? (el === pool || pool.contains(el)) : false;
+
+  if (dragId) {
+    if (bkt)       assignments[dragId] = bkt.dataset.bucket;
+    else if (onPool) assignments[dragId] = 'pool';
+    // if dropped outside both, leave in current location
+  }
+
+  // remove dragging class from original chip
+  document.querySelectorAll('.event-chip.dragging').forEach(c => c.classList.remove('dragging'));
+  dragId = null;
+
+  document.removeEventListener('touchmove',  onTouchMove);
+  document.removeEventListener('touchend',   onTouchEnd);
+  document.removeEventListener('touchcancel',onTouchEnd);
+
   render();
 }
 
+// ──────────────────────────────────────────────
+// Check answers
+// ──────────────────────────────────────────────
 function checkAnswers() {
   if (checked) return;
   checked = true;
@@ -371,7 +545,7 @@ function checkAnswers() {
   fb.classList.add('show');
   if (correct === 8) {
     fb.className = 'feedback-box show correct';
-    fb.innerHTML = '<div class="fb-title">Perfect sort — all 8 correct.</div>Pre-service events (B, C, F, H) happen before care is delivered — they\'re about verifying coverage, getting prior authorization, and setting up the financial relationship. Post-service events (A, D, E, G) happen after care and are about requesting and receiving payment.';
+    fb.innerHTML = '<div class="fb-title">Perfect sort — all 8 correct.</div>Pre-service events (B, C, F, H) happen before care is delivered: verifying coverage, getting prior authorization, and completing pre-registration. Post-service events (A, D, E, G) happen after care: submitting claims, tracking claim status, receiving payment, and reviewing the remittance.';
     document.getElementById('final-callout').classList.add('visible');
   } else {
     fb.className = 'feedback-box show partial';
